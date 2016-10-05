@@ -93,6 +93,7 @@ private:
 class DFA_Alt
 {
 public:
+	DFA_Alt(const NFA &);
 	DFA_Alt(const DFA &);
 
 	void PrintStates() const;
@@ -104,6 +105,11 @@ private:
 	};
 	std::vector<StateInfo> state_info;
 };
+
+DFA_Alt::DFA_Alt(const NFA &nfa)
+{
+
+}
 
 DFA_Alt::DFA_Alt(const DFA &dfa)
 {
