@@ -55,11 +55,11 @@ private:
 	std::vector<Transition> transitions;
 };
 
-class DFA_Alt
+class DFA
 {
 public:
-	DFA_Alt(const NFA &);
-	DFA_Alt(const DFA_Alt &);
+	DFA(const NFA &);
+	DFA(const DFA &);
 
 	void PrintStates() const;
 private:
@@ -80,8 +80,8 @@ int main()
 	{
 		NFA nfa = NFA::Concatenate(NFA::Concatenate(NFA::Concatenate(NFA::Star(NFA('a')), NFA::Or(NFA('a'), NFA('b'))), NFA('a')), NFA('a')).Complete();
 		//NFA nfa = NFA::Star(NFA::Concatenate(NFA::Or(NFA('a'), NFA('b')), NFA::Or(NFA('a'), NFA::Concatenate(NFA('b'), NFA('b'))))).Complete();
-		DFA_Alt dfa(nfa);
-		DFA_Alt optimal(dfa);
+		DFA dfa(nfa);
+		DFA optimal(dfa);
 		dfa.PrintStates();
 		optimal.PrintStates();
 	}
@@ -239,7 +239,7 @@ bool NFA::State::is_accepting() const
 	return accepting;
 }
 
-DFA_Alt::DFA_Alt(const NFA &nfa)
+DFA::DFA(const NFA &nfa)
 {
 	std::vector<std::vector<bool>> states;
 	std::vector<bool> state_set(nfa.size(), false);
@@ -278,7 +278,7 @@ DFA_Alt::DFA_Alt(const NFA &nfa)
 		}
 	}
 }
-DFA_Alt::DFA_Alt(const DFA_Alt &dfa)
+DFA::DFA(const DFA &dfa)
 {
 	struct transition
 	{
@@ -342,14 +342,14 @@ DFA_Alt::DFA_Alt(const DFA_Alt &dfa)
 			state_info[states[i] - 1].transitions[j] = (dfa.state_info[i].transitions[j] == 0) ? 0 : states[dfa.state_info[i].transitions[j] - 1];
 	}
 }
-bool DFA_Alt::is_nonempty(const std::vector<bool> &subset)
+bool DFA::is_nonempty(const std::vector<bool> &subset)
 {
 	for (std::vector<bool>::const_iterator it = subset.cbegin(); it != subset.end(); it++)
 		if (*it == true)
 			return true;
 	return false;
 }
-void DFA_Alt::PrintStates() const
+void DFA::PrintStates() const
 {
 	for (size_t i = 0; i < state_info.size(); i++)
 	{
