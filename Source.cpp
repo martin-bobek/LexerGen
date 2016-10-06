@@ -111,7 +111,67 @@ private:
 
 DFA_Alt::DFA_Alt(const DFA_Alt &dfa)
 {
-
+	struct transition
+	{
+		transition(size_t from_old, size_t from_new, size_t to) : from_old(from_old), from_new(from_new), to(to), marked(false) {}
+		size_t from_old, from_new, to;
+		bool marked;
+	};
+	std::vector<size_t> states;
+	states.reserve(dfa.state_info.size());
+	size_t num_states = 2;
+	if (dfa.state_info[0].accepting)
+		for (size_t index = 0; index < dfa.state_info.size(); index++)
+			states.push_back(dfa.state_info[index].accepting ? 1 : 2);
+	else
+		for (size_t index = 0; index < dfa.state_info.size(); index++)
+			states.push_back(dfa.state_info[index].accepting ? 2 : 1);
+	bool consistent = false;
+	while (!consistent)
+	{
+		consistent = true;
+		for (size_t char_index = 0; char_index < a_size; char_index++)
+		{
+			std::vector<transition> transitions;
+			transitions.reserve(states.size());
+			std::vector<size_t> current_trans_vals(num_states);
+			for (size_t dfa_state = states.size(); dfa_state-- > 0;)
+			{
+				size_t trans = (dfa.state_info[dfa_state].transitions[char_index] == 0) ?
+					0 : states[dfa.state_info[dfa_state].transitions[char_index] - 1];
+				current_trans_vals[states[dfa_state] - 1] = trans;
+				transitions.push_back({ dfa_state, states[dfa_state], trans });
+			}
+			for (size_t i = transitions.size(); i-- > 0;)
+			{
+				if (transitions[i].marked == false)
+				{
+					if (transitions[i].to != current_trans_vals[transitions[i].from_new - 1])
+					{
+						consistent = false;
+						states[transitions[i].from_old] = ++num_states;
+						current_trans_vals[transitions[i].from_new - 1] = num_states;
+					}
+					for (size_t j = i; j-- > 0;)
+					{
+						if ((transitions[j].marked == false) && (transitions[j].from_new == transitions[i].from_new) &&
+							(transitions[j].to == current_trans_vals[transitions[j].from_new - 1]))
+						{
+							transitions[j].marked = true;
+							states[transitions[j].from_old] = states[transitions[i].from_old];
+						}
+					}
+				}
+			}
+		}
+	}
+	state_info = std::vector<StateInfo>(num_states);
+	for (size_t i = 0; i < states.size(); i++)
+	{
+		state_info[states[i] - 1].accepting = dfa.state_info[i].accepting;
+		for (size_t j = 0; j < a_size; j++)
+			state_info[states[i] - 1].transitions[j] = (dfa.state_info[i].transitions[j] == 0) ? 0 : states[dfa.state_info[i].transitions[j] - 1];
+	}
 }
 
 DFA_Alt::DFA_Alt(const NFA &nfa)
@@ -236,12 +296,12 @@ int main()
 	system("pause");
 	try 
 	{
-		NFA nfa = NFA::Concatenate(NFA::Concatenate(NFA::Concatenate(NFA::Star(NFA('a')), NFA::Or(NFA('a'), NFA('b'))), NFA('a')), NFA('a')).Complete();
-		//NFA nfa = NFA::Star(NFA::Concatenate(NFA::Or(NFA('a'), NFA('b')), NFA::Or(NFA('a'), NFA::Concatenate(NFA('b'), NFA('b'))))).Complete();
+		//NFA nfa = NFA::Concatenate(NFA::Concatenate(NFA::Concatenate(NFA::Star(NFA('a')), NFA::Or(NFA('a'), NFA('b'))), NFA('a')), NFA('a')).Complete();
+		NFA nfa = NFA::Star(NFA::Concatenate(NFA::Or(NFA('a'), NFA('b')), NFA::Or(NFA('a'), NFA::Concatenate(NFA('b'), NFA('b'))))).Complete();
 		DFA_Alt dfa(nfa);
-		//DFA_Alt optimal(dfa);
+		DFA_Alt optimal(dfa);
 		dfa.PrintStates();
-		//optimal.PrintStates();
+		optimal.PrintStates();
 	}
 	catch (char *msg)
 	{
