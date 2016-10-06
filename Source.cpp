@@ -104,11 +104,55 @@ private:
 		size_t transitions[a_size];
 	};
 	std::vector<StateInfo> state_info;
+
+	static bool is_nonempty(const std::vector<bool> &);
 };
 
 DFA_Alt::DFA_Alt(const NFA &nfa)
 {
-
+	std::vector<std::vector<bool>> states;
+	std::vector<bool> state_set(nfa.size(), false);
+	state_set[0] = true;
+	states.push_back(nfa.Closure(state_set));
+	state_info.push_back(StateInfo());
+	if (state_set[nfa.accepting()] == true)
+		state_info[0].accepting = true;
+	for (size_t state_index = 0; state_index < states.size(); state_index++)
+	{
+		for (size_t char_index = 0; char_index < a_size; char_index++)
+		{
+			state_set = nfa.Move(states[state_index], alphabet[char_index]);
+			if (is_nonempty(state_set))
+			{
+				for (size_t prev_state_index = 0;; prev_state_index++)
+				{
+					if (prev_state_index == states.size())
+					{
+						states.push_back(state_set);
+						state_info.push_back(StateInfo());
+						if (state_set[nfa.accepting()] == true)
+							state_info[prev_state_index].accepting = true;
+						state_info[state_index].transitions[char_index] = prev_state_index + 1;
+						break;
+					}
+					if (state_set == states[prev_state_index])
+					{
+						state_info[state_index].transitions[char_index] = prev_state_index + 1;
+						break;
+					}
+				}
+			}
+			else
+				state_info[state_index].transitions[char_index] = 0;
+		}
+	}
+}
+bool DFA_Alt::is_nonempty(const std::vector<bool> &subset)
+{
+	for (std::vector<bool>::const_iterator it = subset.cbegin(); it != subset.end(); it++)
+		if (*it == true)
+			return true;
+	return false;
 }
 
 DFA_Alt::DFA_Alt(const DFA &dfa)
@@ -188,10 +232,10 @@ int main()
 	{
 		NFA nfa = NFA::Concatenate(NFA::Concatenate(NFA::Concatenate(NFA::Star(NFA('a')), NFA::Or(NFA('a'), NFA('b'))), NFA('a')), NFA('a')).Complete();
 		//NFA nfa = NFA::Star(NFA::Concatenate(NFA::Or(NFA('a'), NFA('b')), NFA::Or(NFA('a'), NFA::Concatenate(NFA('b'), NFA('b'))))).Complete();
-		DFA dfa(nfa);
-		DFA_Alt optimal(dfa);
+		DFA_Alt dfa(nfa);
+		//DFA_Alt optimal(dfa);
 		dfa.PrintStates();
-		optimal.PrintStates();
+		//optimal.PrintStates();
 	}
 	catch (char *msg)
 	{
