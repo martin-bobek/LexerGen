@@ -95,6 +95,7 @@ class DFA_Alt
 public:
 	DFA_Alt(const NFA &);
 	DFA_Alt(const DFA &);
+	DFA_Alt(const DFA_Alt &);
 
 	void PrintStates() const;
 private:
@@ -107,6 +108,11 @@ private:
 
 	static bool is_nonempty(const std::vector<bool> &);
 };
+
+DFA_Alt::DFA_Alt(const DFA_Alt &dfa)
+{
+
+}
 
 DFA_Alt::DFA_Alt(const NFA &nfa)
 {
