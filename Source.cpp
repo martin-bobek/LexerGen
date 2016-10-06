@@ -10,7 +10,7 @@ constexpr size_t a_index(char c)
 constexpr bool in_alphabet(char c)
 {
 	/*return (c >= 'a' && c <= 'z') ? true :
-		(c >= 'A' && c <= 'Z') ? true : false;*/
+		(c >= 'A' && c <= 'Z') ? true : false; */
 	return (c == 'a' || c == 'b') ? true : false;
 }
 
@@ -58,34 +58,19 @@ private:
 class DFA
 {
 public:
-	void PrintStates() const;
-
 	DFA(const NFA &);
 	DFA(const DFA &);
-private:
-	class State;
-	bool is_nonempty(const std::vector<bool> &) const;
-	std::vector<State *> states;
-};
-class DFA::State
-{
-public:
-	void print_description() const;
 
-	State(const std::vector<bool> &, bool = false);
-	const std::vector<bool> &Characteristic() const;
-	void attach(State *, char);
-	bool operator==(const State &) const;
-	void mark_accepting(size_t);
-	void assign_num(size_t);
-	bool is_accepting() const;
-	bool is_element(size_t) const;
-	size_t trans(size_t) const;
+	void PrintStates() const;
 private:
-	bool accepting;
-	size_t state_num;
-	const std::vector<bool> characteristic_set;
-	State *transitions[a_size];
+	struct StateInfo
+	{
+		bool accepting;
+		size_t transitions[a_size];
+	};
+	std::vector<StateInfo> state_info;
+
+	static bool is_nonempty(const std::vector<bool> &);
 };
 
 int main()
@@ -93,8 +78,8 @@ int main()
 	system("pause");
 	try 
 	{
-		//NFA nfa = NFA::Concatenate(NFA::Concatenate(NFA::Concatenate(NFA::Star(NFA('a')), NFA::Or(NFA('a'), NFA('b'))), NFA('a')), NFA('a')).Complete();
-		NFA nfa = NFA::Star(NFA::Concatenate(NFA::Or(NFA('a'), NFA('b')), NFA::Or(NFA('a'), NFA::Concatenate(NFA('b'), NFA('b'))))).Complete();
+		NFA nfa = NFA::Concatenate(NFA::Concatenate(NFA::Concatenate(NFA::Star(NFA('a')), NFA::Or(NFA('a'), NFA('b'))), NFA('a')), NFA('a')).Complete();
+		//NFA nfa = NFA::Star(NFA::Concatenate(NFA::Or(NFA('a'), NFA('b')), NFA::Or(NFA('a'), NFA::Concatenate(NFA('b'), NFA('b'))))).Complete();
 		DFA dfa(nfa);
 		DFA optimal(dfa);
 		dfa.PrintStates();
@@ -256,203 +241,121 @@ bool NFA::State::is_accepting() const
 
 DFA::DFA(const NFA &nfa)
 {
+	std::vector<std::vector<bool>> states;
 	std::vector<bool> state_set(nfa.size(), false);
 	state_set[0] = true;
-	states.push_back(new State(nfa.Closure(state_set)));
-	for (size_t i = 0; i < states.size(); i++)
+	states.push_back(nfa.Closure(state_set));
+	state_info.push_back(StateInfo());
+	if (state_set[nfa.accepting()] == true)
+		state_info[0].accepting = true;
+	for (size_t state_index = 0; state_index < states.size(); state_index++)
 	{
-		for (size_t j = 0; j < a_size; j++)
+		for (size_t char_index = 0; char_index < a_size; char_index++)
 		{
-			state_set = nfa.Move(states[i]->Characteristic(), alphabet[j]);
+			state_set = nfa.Move(states[state_index], alphabet[char_index]);
 			if (is_nonempty(state_set))
 			{
-				State *move_result = new State(state_set);
-				size_t k;
-				for (k = 0; k < states.size(); k++)
+				for (size_t prev_state_index = 0;; prev_state_index++)
 				{
-					if (*move_result == *states[k])
+					if (prev_state_index == states.size())
 					{
-						states[i]->attach(states[k], alphabet[j]);
+						states.push_back(state_set);
+						state_info.push_back(StateInfo());
+						if (state_set[nfa.accepting()] == true)
+							state_info[prev_state_index].accepting = true;
+						state_info[state_index].transitions[char_index] = prev_state_index + 1;
+						break;
+					}
+					if (state_set == states[prev_state_index])
+					{
+						state_info[state_index].transitions[char_index] = prev_state_index + 1;
 						break;
 					}
 				}
-				if (k == states.size())
+			}
+			else
+				state_info[state_index].transitions[char_index] = 0;
+		}
+	}
+}
+DFA::DFA(const DFA &dfa)
+{
+	struct transition
+	{
+		transition(size_t from_old, size_t from_new, size_t to) : from_old(from_old), from_new(from_new), to(to), marked(false) {}
+		size_t from_old, from_new, to;
+		bool marked;
+	};
+	std::vector<size_t> states;
+	states.reserve(dfa.state_info.size());
+	size_t num_states = 2;
+	if (dfa.state_info[0].accepting)
+		for (size_t index = 0; index < dfa.state_info.size(); index++)
+			states.push_back(dfa.state_info[index].accepting ? 1 : 2);
+	else
+		for (size_t index = 0; index < dfa.state_info.size(); index++)
+			states.push_back(dfa.state_info[index].accepting ? 2 : 1);
+	bool consistent = false;
+	while (!consistent)
+	{
+		consistent = true;
+		for (size_t char_index = 0; char_index < a_size; char_index++)
+		{
+			std::vector<transition> transitions;
+			transitions.reserve(states.size());
+			std::vector<size_t> current_trans_vals(num_states);
+			for (size_t dfa_state = states.size(); dfa_state-- > 0;)
+			{
+				size_t trans = (dfa.state_info[dfa_state].transitions[char_index] == 0) ?
+					0 : states[dfa.state_info[dfa_state].transitions[char_index] - 1];
+				current_trans_vals[states[dfa_state] - 1] = trans;
+				transitions.push_back({ dfa_state, states[dfa_state], trans });
+			}
+			for (size_t i = transitions.size(); i-- > 0;)
+			{
+				if (transitions[i].marked == false)
 				{
-					states.push_back(move_result);
-					states[i]->attach(states[states.size() - 1], alphabet[j]);
+					if (transitions[i].to != current_trans_vals[transitions[i].from_new - 1])
+					{
+						consistent = false;
+						states[transitions[i].from_old] = ++num_states;
+						current_trans_vals[transitions[i].from_new - 1] = num_states;
+					}
+					for (size_t j = i; j-- > 0;)
+					{
+						if ((transitions[j].marked == false) && (transitions[j].from_new == transitions[i].from_new) &&
+							(transitions[j].to == current_trans_vals[transitions[j].from_new - 1]))
+						{
+							transitions[j].marked = true;
+							states[transitions[j].from_old] = states[transitions[i].from_old];
+						}
+					}
 				}
 			}
 		}
 	}
-	size_t accepting = nfa.accepting();
+	state_info = std::vector<StateInfo>(num_states);
 	for (size_t i = 0; i < states.size(); i++)
 	{
-		states[i]->assign_num(i);
-		states[i]->mark_accepting(accepting);
+		state_info[states[i] - 1].accepting = dfa.state_info[i].accepting;
+		for (size_t j = 0; j < a_size; j++)
+			state_info[states[i] - 1].transitions[j] = (dfa.state_info[i].transitions[j] == 0) ? 0 : states[dfa.state_info[i].transitions[j] - 1];
 	}
 }
-bool DFA::is_nonempty(const std::vector<bool> &subset) const
+bool DFA::is_nonempty(const std::vector<bool> &subset)
 {
-	for (size_t i = 0; i < subset.size(); i++)
-		if (subset[i])
+	for (std::vector<bool>::const_iterator it = subset.cbegin(); it != subset.end(); it++)
+		if (*it == true)
 			return true;
 	return false;
 }
-DFA::State::State(const std::vector<bool> &characteristic_set, bool accepting) : characteristic_set(characteristic_set), accepting(accepting)
-{
-	for (size_t i = 0; i < a_size; i++)
-		transitions[i] = nullptr;
-}
-const std::vector<bool> &DFA::State::Characteristic() const
-{
-	return characteristic_set;
-}
-void DFA::State::attach(DFA::State *to, char c)
-{
-	transitions[a_index(c)] = to;
-}
-bool DFA::State::operator==(const DFA::State &rhs) const
-{
-	for (size_t i = 0; i < characteristic_set.size(); i++)
-		if (characteristic_set[i] != rhs.characteristic_set[i])
-			return false;
-	return true;
-}
-void DFA::State::mark_accepting(size_t nfa_accepting)
-{
-	if (characteristic_set[nfa_accepting])
-		accepting = true;
-}
-void DFA::State::assign_num(size_t num)
-{
-	state_num = num;
-}
-
-DFA::DFA(const DFA &dfa)
-{
-	std::vector<bool> characteristic_0(dfa.states.size(), false);
-	std::vector<bool> characteristic_1(dfa.states.size(), false);
-	for (size_t i = 0; i < dfa.states.size(); i++)
-	{
-		if (dfa.states[i]->is_accepting())
-			characteristic_1[i] = true;
-		else
-			characteristic_0[i] = true;
-	}
-	if (characteristic_0[0] == true)
-	{
-		states.push_back(new State(characteristic_0, false));
-		states.push_back(new State(characteristic_1, true));
-	}
-	else
-	{
-		states.push_back(new State(characteristic_1, true));
-		states.push_back(new State(characteristic_0, false));
-	}
-
-	struct transitions
-	{
-		transitions(size_t from, size_t to) : from(from), to(to), checked(false) {}
-		size_t from, to;
-		bool checked;
-	};
-
-	bool valid = false;
-	while (!valid)
-	{
-		valid = true;
-		for (size_t i = 0; i < a_size; i++)
-		{
-			size_t size = states.size();
-			for (size_t j = 0; j < size; j++)
-			{
-				std::vector<transitions> trans;
-				trans.reserve(dfa.states.size());
-				for (size_t k = 0; k < dfa.states.size(); k++)
-					if (states[j]->is_element(k))
-						trans.push_back({ k, dfa.states[k]->trans(i) });
-				for (size_t k = 0; k < trans.size(); k++)
-					for (size_t l = 0; l < states.size(); l++)
-					{
-						if (trans[k].to == 0)
-							break;
-						if (states[l]->is_element(trans[k].to - 1))
-						{
-							trans[k].to = l + 1;
-							break;
-						}
-					}
-				State *temp = nullptr;
-				for (size_t k = 0; k < trans.size(); k++)
-					if (!trans[k].checked)
-					{
-						std::vector<bool> characteristic(dfa.states.size(), false);
-						size_t current = trans[k].to;
-						for (size_t l = k; l < trans.size(); l++)
-							if (trans[l].to == current)
-							{
-								characteristic[trans[l].from] = true;
-								trans[l].checked = true;
-							}
-						if (k == 0)
-							temp = new State(characteristic, states[j]->is_accepting());
-						else
-							states.push_back(new State(characteristic, states[j]->is_accepting()));
-					}
-				if (*states[j] == *temp)
-					delete temp;
-				else
-				{
-					delete states[j];
-					states[j] = temp;
-					valid = false;
-				}
-			}
-		}
-	}
-	for (size_t i = 0; i < states.size(); i++)
-	{
-		states[i]->assign_num(i);
-		for (size_t j = 0; j < a_size; j++)
-			for (size_t k = 0;; k++)
-				if (states[i]->is_element(k))
-				{
-					size_t to = dfa.states[k]->trans(j);
-					if (to-- != 0)
-						for (size_t l = 0;; l++)
-							if (states[l]->is_element(to))
-							{
-								states[i]->attach(states[l], alphabet[j]);
-								break;
-							}
-					break;
-				}
-	}
-}
-bool DFA::State::is_accepting() const
-{
-	return accepting;
-}
-bool DFA::State::is_element(size_t element) const
-{
-	return characteristic_set[element];
-}
-size_t DFA::State::trans(size_t index) const
-{
-	if (transitions[index] == nullptr)
-		return 0;
-	return transitions[index]->state_num + 1;
-}
-
 void DFA::PrintStates() const
 {
-	for (size_t i = 0; i < states.size(); i++)
-		states[i]->print_description();
-}
-void DFA::State::print_description() const
-{
-	std::cout << "State " << state_num << ": " << (accepting ? "Accepting\n" : "\n");
-	for (size_t i = 0; i < a_size; i++)
-		if (transitions[i] != nullptr)
-			std::cout << "\tMove(" << state_num << ", " << alphabet[i] << ") = " << transitions[i]->state_num << std::endl;
+	for (size_t i = 0; i < state_info.size(); i++)
+	{
+		std::cout << "State " << i + 1 << ": " << (state_info[i].accepting ? "Accepting\n" : "\n");
+		for (size_t j = 0; j < a_size; j++)
+			if (state_info[i].transitions[j] != 0)
+				std::cout << "\tMove(" << i + 1 << ", " << alphabet[j] << ") = " << state_info[i].transitions[j] << std::endl;
+	}
 }
