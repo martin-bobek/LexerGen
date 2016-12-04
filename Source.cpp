@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <vector>
 
 constexpr size_t a_size = 2;
@@ -62,6 +63,8 @@ public:
 	DFA(const DFA &);
 
 	void PrintStates() const;
+	void PrintHeaders(std::ostream &) const;
+	void PrintDefinitions(std::ostream &) const;
 private:
 	struct StateInfo
 	{
@@ -73,17 +76,24 @@ private:
 	static bool is_nonempty(const std::vector<bool> &);
 };
 
-int main()
+int main(int argc, char *argv[])
 {
 	system("pause");
 	try 
 	{
-		NFA nfa = NFA::Concatenate(NFA::Concatenate(NFA::Concatenate(NFA::Star(NFA('a')), NFA::Or(NFA('a'), NFA('b'))), NFA('a')), NFA('a')).Complete();
-		//NFA nfa = NFA::Star(NFA::Concatenate(NFA::Or(NFA('a'), NFA('b')), NFA::Or(NFA('a'), NFA::Concatenate(NFA('b'), NFA('b'))))).Complete();
+		//NFA nfa = NFA::Concatenate(NFA::Concatenate(NFA::Concatenate(NFA::Star(NFA('a')), NFA::Or(NFA('a'), NFA('b'))), NFA('a')), NFA('a')).Complete();
+		NFA nfa = NFA::Star(NFA::Concatenate(NFA::Or(NFA('a'), NFA('b')), NFA::Or(NFA('a'), NFA::Concatenate(NFA('b'), NFA('b'))))).Complete();
 		DFA dfa(nfa);
 		DFA optimal(dfa);
 		dfa.PrintStates();
 		optimal.PrintStates();
+
+		std::ofstream out(argc < 2 ? "out.cpp" : argv[1]);
+
+		optimal.PrintHeaders(out);
+		out << std::endl;
+		optimal.PrintDefinitions(out);
+		out.close();
 	}
 	catch (char *msg)
 	{
@@ -349,6 +359,7 @@ bool DFA::is_nonempty(const std::vector<bool> &subset)
 			return true;
 	return false;
 }
+
 void DFA::PrintStates() const
 {
 	for (size_t i = 0; i < state_info.size(); i++)
@@ -357,5 +368,37 @@ void DFA::PrintStates() const
 		for (size_t j = 0; j < a_size; j++)
 			if (state_info[i].transitions[j] != 0)
 				std::cout << "\tMove(" << i + 1 << ", " << alphabet[j] << ") = " << state_info[i].transitions[j] << std::endl;
+	}
+}
+void DFA::PrintHeaders(std::ostream &out) const
+{
+	for (size_t i = 0; i < state_info.size(); )
+		out << "bool State_" << ++i << "(std::string::const_iterator it, std::string::const_iterator end);" << std::endl;
+}
+void DFA::PrintDefinitions(std::ostream &out) const
+{
+	for (size_t i = 0; i < state_info.size(); i++)
+	{
+		out << "bool State_" << i + 1 << "(std::string::const_iterator it, std::string::const_iterator end)\n";
+		out << "{\n";
+		out << "\tif (it != end)\n";
+		out << "\t{\n";
+		out << "\t\tswitch (*it++)\n";
+		out << "\t\t{\n";
+		for (size_t j = 0; j < a_size; j++)
+		{
+			if (state_info[i].transitions[j] != 0)
+			{
+				out << "\t\tcase '" << alphabet[j] << "':\n";
+				out << "\t\t\treturn State_" << state_info[i].transitions[j] << "(it, end);\n";
+			}
+		}
+		out << "\t\tdefault :\n";
+		out << "\t\t\treturn false;\n";
+		out << "\t\t}\n";
+		out << "\t}\n";
+		out << "\telse\n";
+		out << "\t\treturn " << (state_info[i].accepting ? "true;\n" : "false;\n");
+		out << "}" << std::endl;
 	}
 }
