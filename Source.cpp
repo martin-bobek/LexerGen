@@ -19,13 +19,18 @@ class NFA
 {
 public:
 	NFA(char);
-	NFA &Complete();
+	NFA(const NFA &) = delete;
+	NFA(NFA &&mov);
+	~NFA();
+	NFA Complete();
+	NFA &operator=(const NFA &&) = delete;
+	NFA &operator=(NFA &&rhs);											// is it even possible to chain this operator?
 	std::vector<bool> &Closure(std::vector<bool> &) const;
 	std::vector<bool> Move(const std::vector<bool> &, char) const;
-	static NFA Concatenate(const NFA &lhs, const NFA &rhs);
-	static NFA Or(const NFA &lhs, const NFA &rhs);
-	static NFA Star(const NFA &arg);
-	static NFA Plus(const NFA &arg);
+	static NFA Concatenate(NFA &&lhs, NFA &&rhs);
+	static NFA Or(NFA &&lhs, NFA &&rhs);
+	static NFA Star(NFA &&arg);
+	static NFA Plus(NFA &&arg);
 	size_t size() const;
 	size_t accepting() const;
 private:
@@ -81,8 +86,8 @@ int main(int argc, char *argv[])
 	system("pause");
 	try 
 	{
-		//NFA nfa = NFA::Concatenate(NFA::Concatenate(NFA::Concatenate(NFA::Star(NFA('a')), NFA::Or(NFA('a'), NFA('b'))), NFA('a')), NFA('a')).Complete();
-		NFA nfa = NFA::Star(NFA::Concatenate(NFA::Or(NFA('a'), NFA('b')), NFA::Or(NFA('a'), NFA::Concatenate(NFA('b'), NFA('b'))))).Complete();
+		NFA nfa = NFA::Concatenate(NFA::Concatenate(NFA::Concatenate(NFA::Star(NFA('a')), NFA::Or(NFA('a'), NFA('b'))), NFA('a')), NFA('a')).Complete();
+		//NFA nfa = NFA::Star(NFA::Concatenate(NFA::Or(NFA('a'), NFA('b')), NFA::Or(NFA('a'), NFA::Concatenate(NFA('b'), NFA('b'))))).Complete();
 		DFA dfa(nfa);
 		DFA optimal(dfa);
 		dfa.PrintStates();
@@ -112,14 +117,32 @@ NFA::NFA(char c) : exit_char(c)
 	else
 		throw "NFA::NFA: Character is not in alphabet!";
 }
-NFA &NFA::Complete()
+NFA::NFA(NFA &&mov)
+{
+	states = std::move(mov.states);
+	exit_char = mov.exit_char;
+	exit_state = mov.exit_state;
+}
+NFA::~NFA()
+{
+	for (size_t i = 0; i < states.size(); i++)
+		delete states[i];
+}
+NFA &NFA::operator=(NFA &&rhs)
+{
+	states = std::move(rhs.states); // should self assignment be checked for ???
+	exit_char = rhs.exit_char;
+	exit_state = rhs.exit_state;
+	return *this;
+}
+NFA NFA::Complete()
 {
 	State *end = new State(true);
 	exit_state->attach(exit_char, end);
 	states.push_back(end);
 	for (size_t i = 0; i < states.size(); i++)
 		(*states[i]).assign_num(i);
-	return *this;
+	return std::move(*this);
 }
 std::vector<bool> &NFA::Closure(std::vector<bool> &subset) const
 {
@@ -154,7 +177,7 @@ void NFA::closure_recursion(size_t current, size_t checked, std::vector<bool> &s
 			closure_recursion(trans[i], checked, subset);
 	}
 }
-NFA NFA::Concatenate(const NFA &lhs, const NFA &rhs)
+NFA NFA::Concatenate(NFA &&lhs, NFA &&rhs)
 {
 	lhs.exit_state->attach(lhs.exit_char, rhs.states[0]);
 	NFA result;
@@ -165,9 +188,11 @@ NFA NFA::Concatenate(const NFA &lhs, const NFA &rhs)
 		result.states.push_back(rhs.states[i]);
 	result.exit_char = rhs.exit_char;
 	result.exit_state = rhs.exit_state;
+	lhs.states.clear();
+	rhs.states.clear();
 	return result;
 }
-NFA NFA::Or(const NFA &lhs, const NFA &rhs)
+NFA NFA::Or(NFA &&lhs, NFA &&rhs)
 {
 	State *in = new State(), *out = new State();
 	in->attach('\0', lhs.states[0]);
@@ -184,9 +209,11 @@ NFA NFA::Or(const NFA &lhs, const NFA &rhs)
 	result.states.push_back(out);
 	result.exit_char = '\0';
 	result.exit_state = out;
+	lhs.states.clear();
+	rhs.states.clear();
 	return result;
 }
-NFA NFA::Star(const NFA &arg)
+NFA NFA::Star(NFA &&arg)
 {
 	State *hub = new State();
 	hub->attach('\0', arg.states[0]);
@@ -198,10 +225,10 @@ NFA NFA::Star(const NFA &arg)
 		result.states.push_back(arg.states[i]);
 	result.exit_char = '\0';
 	result.exit_state = hub;
+	arg.states.clear();
 	return result;
-
 }
-NFA NFA::Plus(const NFA &arg)
+NFA NFA::Plus(NFA &&arg)
 {
 	State *in = new State(), *out = new State();
 	in->attach('\0', arg.states[0]);
@@ -215,6 +242,7 @@ NFA NFA::Plus(const NFA &arg)
 	result.states.push_back(out);
 	result.exit_char = '\0';
 	result.exit_state = out;
+	arg.states.clear();
 	return result;
 }
 size_t NFA::size() const
