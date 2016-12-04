@@ -22,11 +22,11 @@ public:
 	NFA(const NFA &) = delete;
 	NFA(NFA &&mov);
 	~NFA();
-	NFA Complete();
 	NFA &operator=(const NFA &&) = delete;
 	NFA &operator=(NFA &&rhs);											// is it even possible to chain this operator?
 	std::vector<bool> &Closure(std::vector<bool> &) const;
 	std::vector<bool> Move(const std::vector<bool> &, char) const;
+	static NFA Complete(NFA &&arg);
 	static NFA Concatenate(NFA &&lhs, NFA &&rhs);
 	static NFA Or(NFA &&lhs, NFA &&rhs);
 	static NFA Star(NFA &&arg);
@@ -86,7 +86,7 @@ int main(int argc, char *argv[])
 	system("pause");
 	try 
 	{
-		NFA nfa = NFA::Concatenate(NFA::Concatenate(NFA::Concatenate(NFA::Star(NFA('a')), NFA::Or(NFA('a'), NFA('b'))), NFA('a')), NFA('a')).Complete();
+		NFA nfa = NFA::Complete(NFA::Concatenate(NFA::Concatenate(NFA::Concatenate(NFA::Star(NFA('a')), NFA::Or(NFA('a'), NFA('b'))), NFA('a')), NFA('a')));
 		//NFA nfa = NFA::Star(NFA::Concatenate(NFA::Or(NFA('a'), NFA('b')), NFA::Or(NFA('a'), NFA::Concatenate(NFA('b'), NFA('b'))))).Complete();
 		DFA dfa(nfa);
 		DFA optimal(dfa);
@@ -135,14 +135,14 @@ NFA &NFA::operator=(NFA &&rhs)
 	exit_state = rhs.exit_state;
 	return *this;
 }
-NFA NFA::Complete()
+NFA NFA::Complete(NFA &&arg)
 {
 	State *end = new State(true);
-	exit_state->attach(exit_char, end);
-	states.push_back(end);
-	for (size_t i = 0; i < states.size(); i++)
-		(*states[i]).assign_num(i);
-	return std::move(*this);
+	arg.exit_state->attach(arg.exit_char, end);
+	arg.states.push_back(end);
+	for (size_t i = 0; i < arg.states.size(); i++)
+		(*arg.states[i]).assign_num(i);
+	return std::move(arg);
 }
 std::vector<bool> &NFA::Closure(std::vector<bool> &subset) const
 {
