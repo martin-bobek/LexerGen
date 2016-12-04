@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <chrono>
 
 constexpr size_t a_size = 2;
 constexpr char alphabet[a_size + 1] = "ab";
@@ -79,6 +80,7 @@ private:
 int main(int argc, char *argv[])
 {
 	system("pause");
+	std::chrono::time_point<std::chrono::high_resolution_clock> t0 = std::chrono::high_resolution_clock::now();
 	try 
 	{
 		//NFA nfa = NFA::Concatenate(NFA::Concatenate(NFA::Concatenate(NFA::Star(NFA('a')), NFA::Or(NFA('a'), NFA('b'))), NFA('a')), NFA('a')).Complete();
@@ -99,6 +101,8 @@ int main(int argc, char *argv[])
 	{
 		std::cout << msg << std::endl;
 	}
+	std::chrono::time_point<std::chrono::high_resolution_clock> t = std::chrono::high_resolution_clock::now();
+	std::cout << "\nExecution time: " << std::chrono::duration_cast<std::chrono::microseconds>(t - t0).count() << std::endl;
 	system("pause");
 }
 
