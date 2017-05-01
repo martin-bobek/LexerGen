@@ -5,8 +5,10 @@
 #include <memory>
 #include <chrono>
 
-constexpr size_t a_size = 2;
-constexpr char alphabet[a_size + 1] = "ab";
+// bug with input (abc)*(a|b)*
+
+constexpr size_t a_size = 3;
+constexpr char alphabet[a_size + 1] = "abc";
 constexpr size_t a_index(char c)
 {
 	return c - 'a';
@@ -15,7 +17,7 @@ constexpr bool in_alphabet(char c)
 {
 	/*return (c >= 'a' && c <= 'z') ? true :
 		(c >= 'A' && c <= 'Z') ? true : false; */
-	return (c == 'a' || c == 'b') ? true : false;
+	return (c == 'a' || c == 'b' || c == 'c') ? true : false;
 }
 
 class NFA
@@ -93,7 +95,7 @@ class Tree
 {
 public:
 	Tree(const std::string &input);
-	NFA GenNfa() const { return node->GenNfa(); }
+	NFA GenNfa() const { return NFA::Complete(node->GenNfa()); }
 private:
 	std::unique_ptr<Node> node;
 };
@@ -101,7 +103,7 @@ class Terminal : public Node
 {
 public:
 	Terminal(char symbol) : symbol(symbol) {}
-	NFA GenNfa() const { return NFA(symbol); }
+	NFA GenNfa(NFA &&nfa = NFA()) const { return NFA(symbol); }
 private:
 	const char symbol;
 };
@@ -109,12 +111,6 @@ class NonTerminal : public Node
 {
 protected:
 	std::vector<std::unique_ptr<Node>> nodes;
-};
-class P : public NonTerminal
-{
-public:
-	P(std::string::const_iterator &it, std::string::const_iterator end);
-	NFA GenNfa(NFA &&nfa = NFA()) const;
 };
 class Q : public NonTerminal
 {
@@ -152,158 +148,24 @@ public:
 	V(std::string::const_iterator &it, std::string::const_iterator end);
 	NFA GenNfa(NFA &&nfa = NFA()) const;
 };
-
-Tree::Tree(const std::string &input)
+class W : public NonTerminal
 {
-	std::string::const_iterator it = input.begin(), end = input.end();
-	if (it == end || (*it >= 'a' && *it <= 'z') || (*it >= 'A' && *it <= 'Z') || *it == '|' || *it == '(')
-	{
-		node = std::unique_ptr<Node>(new P(it, end));
-		if (it != end)
-			throw "Tree::Tree 1: Syntax Error!";
-	}
-	else
-		throw "Tree::Tree 2: Syntax Error!";
-}
-P::P(std::string::const_iterator &it, std::string::const_iterator end)
-{
-	if (it == end || (*it >= 'a' && *it <= 'z') || (*it >= 'A' && *it <= 'Z') || *it == '|' || *it == '(' || *it == ')')
-	{
-		nodes.push_back(std::unique_ptr<Node>(new Q(it, end)));
-		nodes.push_back(std::unique_ptr<Node>(new R(it, end)));
-	}
-	else
-		throw "P::P 1: Syntax Error!";
-}
-NFA P::GenNfa(NFA &&nfa = NFA()) const
-{
-
-}
-Q::Q(std::string::const_iterator &it, std::string::const_iterator end)
-{
-	if (it == end || *it == '|' || *it == ')');
-	else if ((*it >= 'a' && *it <= 'z') || (*it >= 'A' && *it <= 'Z') || *it == '(')
-	{
-		nodes.push_back(std::unique_ptr<Node>(new T(it, end)));
-		nodes.push_back(std::unique_ptr<Node>(new Q(it, end)));
-	}
-	else
-		throw "Q::Q 1: Syntax Error!";
-}
-NFA Q::GenNfa(NFA &&nfa = NFA()) const // assuming T does not require anything passed in
-{
-	if (nodes.empty())
-		return std::move(nfa);
-	return nodes[1]->GenNfa(NFA::Concatenate(std::move(nfa), nodes[0]->GenNfa()));
-}
-R::R(std::string::const_iterator &it, std::string::const_iterator end)
-{
-	if (it == end || *it == ')');
-	else if (*it == '|')
-	{
-		nodes.push_back(std::unique_ptr<Node>(new S(it, end)));
-		nodes.push_back(std::unique_ptr<Node>(new R(it, end)));
-	}
-	else
-		throw "R::R 1: Syntax Error!";
-}
-NFA R::GenNfa(NFA &&nfa = NFA()) const
-{
-	
-}
-S::S(std::string::const_iterator &it, std::string::const_iterator end)
-{
-	if (it == end)
-		throw "S::S 1: Syntax Error!";
-	else if (*it == '|')
-	{
-		nodes.push_back(std::unique_ptr<Node>(new Terminal('|')));
-		it++;
-		nodes.push_back(std::unique_ptr<Node>(new Q(it, end)));
-	}
-	else
-		throw "S::S 2: Syntax Error!";
-}
-NFA S::GenNfa(NFA &&nfa = NFA()) const
-{
-
-}
-T::T(std::string::const_iterator &it, std::string::const_iterator end)
-{
-	if (it == end)
-		throw "T::T 1: Syntax Error!";
-	else if ((*it >= 'a' && *it <= 'z') || (*it >= 'A' && *it <= 'Z') || *it == '(')
-	{
-		nodes.push_back(std::unique_ptr<Node>(new U(it, end)));
-		nodes.push_back(std::unique_ptr<Node>(new V(it, end)));
-	}
-	else
-		throw "T::T 2: Syntax Error!";
-}
-NFA T::GenNfa(NFA &&nfa = NFA()) const
-{
-
-}
-U::U(std::string::const_iterator &it, std::string::const_iterator end)
-{
-	if (it == end)
-		throw "U::U 1: Syntax Error!";
-	else if ((*it >= 'a' && *it <= 'z') || (*it >= 'A' && *it <= 'Z'))
-	{
-		nodes.push_back(std::unique_ptr<Node>(new Terminal(*it)));
-		it++;
-	}
-	else if (*it == '(')
-	{
-		nodes.push_back(std::unique_ptr<Node>(new Terminal('(')));
-		it++;
-		nodes.push_back(std::unique_ptr<Node>(new P(it, end)));
-		if (it != end && *it == ')')
-			nodes.push_back(std::unique_ptr<Node>(new Terminal(')')));
-		else
-			throw "U::U 2: Syntax Error!";
-		it++;
-	}
-	else
-		throw "U::U 3: Syntax Error!";
-}
-NFA U::GenNfa(NFA &&nfa = NFA()) const
-{
-
-}
-V::V(std::string::const_iterator &it, std::string::const_iterator end)
-{
-	if (it == end || (*it >= 'a' && *it <= 'z') || (*it >= 'A' && *it <= 'Z') || *it == '|' || *it == '(' || *it == ')');
-	else if (*it == '*')
-	{
-		nodes.push_back(std::unique_ptr<Node>(new Terminal('*')));
-		it++;
-		nodes.push_back(std::unique_ptr<Node>(new V(it, end)));
-	}
-	else
-		throw "V::V 1: Syntax Error!";
-}
-NFA V::GenNfa(NFA &&nfa = NFA()) const
-{
-	if (nodes.empty())
-		return std::move(nfa);
-	return NFA::Star(nodes[1]->GenNfa(std::move(nfa)));
-}
+public:
+	W(std::string::const_iterator &it, std::string::const_iterator end);
+	NFA GenNfa(NFA &&nfa = NFA()) const;
+};
 
 int main(int argc, char *argv[])
 {
-	system("pause");
-	std::chrono::time_point<std::chrono::high_resolution_clock> t0 = std::chrono::high_resolution_clock::now();
+	std::chrono::time_point<std::chrono::high_resolution_clock> t0;
 	try 
 	{
 		std::string expression;
 		std::cout << "Regular Expression: ";
 		std::cin >> expression;
+		t0 = std::chrono::high_resolution_clock::now();
 		Tree syntaxTree(expression);
 		NFA nfa = syntaxTree.GenNfa();
-		/*
-		NFA nfa = NFA::Complete(NFA::Concatenate(NFA::Concatenate(NFA::Concatenate(NFA::Star(NFA('a')), NFA::Or(NFA('a'), NFA('b'))), NFA('a')), NFA('a')));
-		//NFA nfa = NFA::Star(NFA::Concatenate(NFA::Or(NFA('a'), NFA('b')), NFA::Or(NFA('a'), NFA::Concatenate(NFA('b'), NFA('b'))))).Complete();
 		DFA dfa(nfa);
 		DFA optimal(dfa);
 		dfa.PrintStates();
@@ -315,7 +177,6 @@ int main(int argc, char *argv[])
 		out << std::endl;
 		optimal.PrintDefinitions(out);
 		out.close();
-		*/
 	}
 	catch (char *msg)
 	{
@@ -660,4 +521,150 @@ void DFA::PrintDefinitions(std::ostream &out) const
 		out << "\t\treturn " << (state_info[i].accepting ? "true;\n" : "false;\n");
 		out << "}" << std::endl;
 	}
+}
+
+Tree::Tree(const std::string &input)
+{
+	std::string::const_iterator it = input.begin(), end = input.end();
+	if (it == end)
+		throw "Tree::Tree 1: Syntax Error!";
+	else if (*it == '(' || (*it >= 'a' && *it <= 'z') || (*it >= 'A' && *it <= 'Z'))
+	{
+		node = std::unique_ptr<Node>(new Q(it, end));
+		if (it != end)
+			throw "Tree::Tree 2: Syntax Error!";
+	}
+	else
+		throw "Tree::Tree 3: Syntax Error!";
+}
+Q::Q(std::string::const_iterator &it, std::string::const_iterator end)
+{
+	if (it == end)
+		throw "Q::Q 1: Syntax Error!";
+	else if (*it == '(' || (*it >= 'a' && *it <= 'z') || (*it >= 'A' && *it <= 'Z'))
+	{
+		nodes.push_back(std::unique_ptr<Node>(new S(it, end)));
+		nodes.push_back(std::unique_ptr<Node>(new R(it, end)));
+	}
+	else
+		throw "Q::Q 2: Syntax Error!";
+}
+NFA Q::GenNfa(NFA &&nfa) const
+{
+	return nodes[1]->GenNfa(nodes[0]->GenNfa());
+}
+R::R(std::string::const_iterator &it, std::string::const_iterator end)
+{
+	if (it == end || *it == ')');
+	else if (*it == '|')
+	{
+		nodes.push_back(std::unique_ptr<Node>(new Terminal('|')));
+		it++;
+		nodes.push_back(std::unique_ptr<Node>(new S(it, end)));
+		nodes.push_back(std::unique_ptr<Node>(new R(it, end)));
+	}
+	else
+		throw "R::R 1: Syntax Error!";
+}
+NFA R::GenNfa(NFA &&nfa) const
+{
+	if (nodes.empty())
+		return std::move(nfa);
+	return NFA::Or(std::move(nfa), nodes[2]->GenNfa(nodes[1]->GenNfa()));
+}
+S::S(std::string::const_iterator &it, std::string::const_iterator end)
+{
+	if (it == end)
+		throw "S::S 1: Syntax Error!";
+	else if (*it == '(' || (*it >= 'a' && *it <= 'z') || (*it >= 'A' && *it <= 'Z'))
+	{
+		nodes.push_back(std::unique_ptr<Node>(new U(it, end)));
+		nodes.push_back(std::unique_ptr<Node>(new T(it, end)));
+	}
+	else
+		throw "S::S 2: Syntax Error!";
+}
+NFA S::GenNfa(NFA &&nfa) const
+{
+	return nodes[1]->GenNfa(nodes[0]->GenNfa());
+}
+T::T(std::string::const_iterator &it, std::string::const_iterator end)
+{
+	if (it == end || *it == '|' || *it == ')');
+	else if (*it == '(' || (*it >= 'a' && *it <= 'z') || (*it >= 'A' && *it <= 'Z'))
+	{
+		nodes.push_back(std::unique_ptr<Node>(new U(it, end)));
+		nodes.push_back(std::unique_ptr<Node>(new T(it, end)));
+	}
+	else
+		throw "T::T 1: Syntax Error!";
+}
+NFA T::GenNfa(NFA &&nfa) const
+{
+	if (nodes.empty())
+		return std::move(nfa);
+	return nodes[1]->GenNfa(NFA::Concatenate(std::move(nfa), nodes[0]->GenNfa()));
+}
+U::U(std::string::const_iterator &it, std::string::const_iterator end)
+{
+	if (it == end)
+		throw "U::U 1: Syntax Error!";
+	else if (*it == '(' || (*it >= 'a' && *it <= 'z') || (*it >= 'A' && *it <= 'Z'))
+	{
+		nodes.push_back(std::unique_ptr<Node>(new W(it, end)));
+		nodes.push_back(std::unique_ptr<Node>(new V(it, end)));
+	}
+	else
+		throw "U::U 2: Syntax Error!";
+}
+NFA U::GenNfa(NFA &&nfa) const
+{
+	return nodes[1]->GenNfa(nodes[0]->GenNfa());
+}
+V::V(std::string::const_iterator &it, std::string::const_iterator end)
+{
+	if (it == end || *it == '|' || *it == '(' || *it == ')' || (*it >= 'a' && *it <= 'z') || (*it >= 'A' && *it <= 'Z'));
+	else if (*it == '*')
+	{
+		nodes.push_back(std::unique_ptr<Node>(new Terminal('*')));
+		it++;
+		nodes.push_back(std::unique_ptr<Node>(new V(it, end)));
+	}
+	else
+		throw "V::V 1: Syntax Error!";
+}
+NFA V::GenNfa(NFA &&nfa) const
+{
+	if (nodes.empty())
+		return std::move(nfa);
+	return NFA::Star(nodes[1]->GenNfa(std::move(nfa)));
+}
+W::W(std::string::const_iterator &it, std::string::const_iterator end)
+{
+	if (it == end)
+		throw "W::W 1: Syntax Error!";
+	else if ((*it >= 'a' && *it <= 'z') || (*it >= 'A' && *it <= 'Z'))
+	{
+		nodes.push_back(std::unique_ptr<Node>(new Terminal(*it)));
+		it++;
+	}
+	else if (*it == '(')
+	{
+		nodes.push_back(std::unique_ptr<Node>(new Terminal('(')));
+		it++;
+		nodes.push_back(std::unique_ptr<Node>(new Q(it, end)));
+		if (it != end && *it == ')')
+			nodes.push_back(std::unique_ptr<Node>(new Terminal(')')));
+		else
+			throw "W::W 2: Syntax Error!";
+		it++;
+	}
+	else
+		throw "W::W 3: Syntax Error!";
+}
+NFA W::GenNfa(NFA &&nfa) const
+{
+	if (nodes.size() == 1)
+		return nodes[0]->GenNfa();
+	return nodes[1]->GenNfa();
 }
