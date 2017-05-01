@@ -1,6 +1,8 @@
 #include <iostream>
 #include <fstream>
+#include <string>
 #include <vector>
+#include <memory>
 #include <chrono>
 
 constexpr size_t a_size = 2;
@@ -19,6 +21,7 @@ constexpr bool in_alphabet(char c)
 class NFA
 {
 public:
+	NFA() : exit_state(nullptr) {};
 	NFA(char);
 	NFA(const NFA &) = delete;
 	NFA(NFA &&mov);
@@ -36,7 +39,6 @@ public:
 	size_t accepting() const;
 private:
 	class State;
-	NFA() {};
 	void closure_recursion(size_t, size_t, std::vector<bool> &) const;
 	char exit_char;
 	State *exit_state;
@@ -82,12 +84,224 @@ private:
 	static bool is_nonempty(const std::vector<bool> &);
 };
 
+class Node
+{
+public:
+	virtual NFA GenNfa(NFA &&nfa = NFA()) const = 0;
+};
+class Tree
+{
+public:
+	Tree(const std::string &input);
+	NFA GenNfa() const { return node->GenNfa(); }
+private:
+	std::unique_ptr<Node> node;
+};
+class Terminal : public Node
+{
+public:
+	Terminal(char symbol) : symbol(symbol) {}
+	NFA GenNfa() const { return NFA(symbol); }
+private:
+	const char symbol;
+};
+class NonTerminal : public Node
+{
+protected:
+	std::vector<std::unique_ptr<Node>> nodes;
+};
+class P : public NonTerminal
+{
+public:
+	P(std::string::const_iterator &it, std::string::const_iterator end);
+	NFA GenNfa(NFA &&nfa = NFA()) const;
+};
+class Q : public NonTerminal
+{
+public:
+	Q(std::string::const_iterator &it, std::string::const_iterator end);
+	NFA GenNfa(NFA &&nfa = NFA()) const;
+};
+class R : public NonTerminal
+{
+public:
+	R(std::string::const_iterator &it, std::string::const_iterator end);
+	NFA GenNfa(NFA &&nfa = NFA()) const;
+};
+class S : public NonTerminal
+{
+public:
+	S(std::string::const_iterator &it, std::string::const_iterator end);
+	NFA GenNfa(NFA &&nfa = NFA()) const;
+};
+class T : public NonTerminal
+{
+public:
+	T(std::string::const_iterator &it, std::string::const_iterator end);
+	NFA GenNfa(NFA &&nfa = NFA()) const;
+};
+class U : public NonTerminal
+{
+public:
+	U(std::string::const_iterator &it, std::string::const_iterator end);
+	NFA GenNfa(NFA &&nfa = NFA()) const;
+};
+class V : public NonTerminal
+{
+public:
+	V(std::string::const_iterator &it, std::string::const_iterator end);
+	NFA GenNfa(NFA &&nfa = NFA()) const;
+};
+
+Tree::Tree(const std::string &input)
+{
+	std::string::const_iterator it = input.begin(), end = input.end();
+	if (it == end || (*it >= 'a' && *it <= 'z') || (*it >= 'A' && *it <= 'Z') || *it == '|' || *it == '(')
+	{
+		node = std::unique_ptr<Node>(new P(it, end));
+		if (it != end)
+			throw "Tree::Tree 1: Syntax Error!";
+	}
+	else
+		throw "Tree::Tree 2: Syntax Error!";
+}
+P::P(std::string::const_iterator &it, std::string::const_iterator end)
+{
+	if (it == end || (*it >= 'a' && *it <= 'z') || (*it >= 'A' && *it <= 'Z') || *it == '|' || *it == '(' || *it == ')')
+	{
+		nodes.push_back(std::unique_ptr<Node>(new Q(it, end)));
+		nodes.push_back(std::unique_ptr<Node>(new R(it, end)));
+	}
+	else
+		throw "P::P 1: Syntax Error!";
+}
+NFA P::GenNfa(NFA &&nfa = NFA()) const
+{
+
+}
+Q::Q(std::string::const_iterator &it, std::string::const_iterator end)
+{
+	if (it == end || *it == '|' || *it == ')');
+	else if ((*it >= 'a' && *it <= 'z') || (*it >= 'A' && *it <= 'Z') || *it == '(')
+	{
+		nodes.push_back(std::unique_ptr<Node>(new T(it, end)));
+		nodes.push_back(std::unique_ptr<Node>(new Q(it, end)));
+	}
+	else
+		throw "Q::Q 1: Syntax Error!";
+}
+NFA Q::GenNfa(NFA &&nfa = NFA()) const // assuming T does not require anything passed in
+{
+	if (nodes.empty())
+		return std::move(nfa);
+	return nodes[1]->GenNfa(NFA::Concatenate(std::move(nfa), nodes[0]->GenNfa()));
+}
+R::R(std::string::const_iterator &it, std::string::const_iterator end)
+{
+	if (it == end || *it == ')');
+	else if (*it == '|')
+	{
+		nodes.push_back(std::unique_ptr<Node>(new S(it, end)));
+		nodes.push_back(std::unique_ptr<Node>(new R(it, end)));
+	}
+	else
+		throw "R::R 1: Syntax Error!";
+}
+NFA R::GenNfa(NFA &&nfa = NFA()) const
+{
+	
+}
+S::S(std::string::const_iterator &it, std::string::const_iterator end)
+{
+	if (it == end)
+		throw "S::S 1: Syntax Error!";
+	else if (*it == '|')
+	{
+		nodes.push_back(std::unique_ptr<Node>(new Terminal('|')));
+		it++;
+		nodes.push_back(std::unique_ptr<Node>(new Q(it, end)));
+	}
+	else
+		throw "S::S 2: Syntax Error!";
+}
+NFA S::GenNfa(NFA &&nfa = NFA()) const
+{
+
+}
+T::T(std::string::const_iterator &it, std::string::const_iterator end)
+{
+	if (it == end)
+		throw "T::T 1: Syntax Error!";
+	else if ((*it >= 'a' && *it <= 'z') || (*it >= 'A' && *it <= 'Z') || *it == '(')
+	{
+		nodes.push_back(std::unique_ptr<Node>(new U(it, end)));
+		nodes.push_back(std::unique_ptr<Node>(new V(it, end)));
+	}
+	else
+		throw "T::T 2: Syntax Error!";
+}
+NFA T::GenNfa(NFA &&nfa = NFA()) const
+{
+
+}
+U::U(std::string::const_iterator &it, std::string::const_iterator end)
+{
+	if (it == end)
+		throw "U::U 1: Syntax Error!";
+	else if ((*it >= 'a' && *it <= 'z') || (*it >= 'A' && *it <= 'Z'))
+	{
+		nodes.push_back(std::unique_ptr<Node>(new Terminal(*it)));
+		it++;
+	}
+	else if (*it == '(')
+	{
+		nodes.push_back(std::unique_ptr<Node>(new Terminal('(')));
+		it++;
+		nodes.push_back(std::unique_ptr<Node>(new P(it, end)));
+		if (it != end && *it == ')')
+			nodes.push_back(std::unique_ptr<Node>(new Terminal(')')));
+		else
+			throw "U::U 2: Syntax Error!";
+		it++;
+	}
+	else
+		throw "U::U 3: Syntax Error!";
+}
+NFA U::GenNfa(NFA &&nfa = NFA()) const
+{
+
+}
+V::V(std::string::const_iterator &it, std::string::const_iterator end)
+{
+	if (it == end || (*it >= 'a' && *it <= 'z') || (*it >= 'A' && *it <= 'Z') || *it == '|' || *it == '(' || *it == ')');
+	else if (*it == '*')
+	{
+		nodes.push_back(std::unique_ptr<Node>(new Terminal('*')));
+		it++;
+		nodes.push_back(std::unique_ptr<Node>(new V(it, end)));
+	}
+	else
+		throw "V::V 1: Syntax Error!";
+}
+NFA V::GenNfa(NFA &&nfa = NFA()) const
+{
+	if (nodes.empty())
+		return std::move(nfa);
+	return NFA::Star(nodes[1]->GenNfa(std::move(nfa)));
+}
+
 int main(int argc, char *argv[])
 {
 	system("pause");
 	std::chrono::time_point<std::chrono::high_resolution_clock> t0 = std::chrono::high_resolution_clock::now();
 	try 
 	{
+		std::string expression;
+		std::cout << "Regular Expression: ";
+		std::cin >> expression;
+		Tree syntaxTree(expression);
+		NFA nfa = syntaxTree.GenNfa();
+		/*
 		NFA nfa = NFA::Complete(NFA::Concatenate(NFA::Concatenate(NFA::Concatenate(NFA::Star(NFA('a')), NFA::Or(NFA('a'), NFA('b'))), NFA('a')), NFA('a')));
 		//NFA nfa = NFA::Star(NFA::Concatenate(NFA::Or(NFA('a'), NFA('b')), NFA::Or(NFA('a'), NFA::Concatenate(NFA('b'), NFA('b'))))).Complete();
 		DFA dfa(nfa);
@@ -101,6 +315,7 @@ int main(int argc, char *argv[])
 		out << std::endl;
 		optimal.PrintDefinitions(out);
 		out.close();
+		*/
 	}
 	catch (char *msg)
 	{
@@ -183,6 +398,10 @@ void NFA::closure_recursion(size_t current, size_t checked, std::vector<bool> &s
 }
 NFA NFA::Concatenate(NFA &&lhs, NFA &&rhs)
 {
+	if (!rhs.exit_state)
+		return std::move(lhs);
+	if (!lhs.exit_state)
+		return std::move(rhs);
 	lhs.exit_state->attach(lhs.exit_char, rhs.states[0]);
 	NFA result;
 	result.states.reserve(lhs.states.size() + rhs.states.size() + 1);
@@ -198,6 +417,10 @@ NFA NFA::Concatenate(NFA &&lhs, NFA &&rhs)
 }
 NFA NFA::Or(NFA &&lhs, NFA &&rhs)
 {
+	if (!rhs.exit_state)
+		return std::move(lhs);
+	if (!lhs.exit_state)
+		return std::move(rhs);
 	State *in = new State(), *out = new State();
 	in->attach('\0', lhs.states[0]);
 	in->attach('\0', rhs.states[0]);
@@ -219,6 +442,8 @@ NFA NFA::Or(NFA &&lhs, NFA &&rhs)
 }
 NFA NFA::Star(NFA &&arg)
 {
+	if (!arg.exit_state)
+		return NFA();
 	State *hub = new State();
 	hub->attach('\0', arg.states[0]);
 	arg.exit_state->attach(arg.exit_char, hub);
@@ -234,6 +459,8 @@ NFA NFA::Star(NFA &&arg)
 }
 NFA NFA::Plus(NFA &&arg)
 {
+	if (!arg.exit_state)
+		return NFA();
 	State *in = new State(), *out = new State();
 	in->attach('\0', arg.states[0]);
 	arg.exit_state->attach(arg.exit_char, out);
