@@ -206,8 +206,8 @@ NFA::NFA(NFA &&mov)
 }
 NFA::~NFA()
 {
-	for (size_t i = 0; i < states.size(); i++)
-		delete states[i];
+	for (auto state : states)
+		delete state;
 }
 NFA &NFA::operator=(NFA &&rhs)
 {
@@ -222,7 +222,7 @@ NFA NFA::Complete(NFA &&arg)
 	arg.exit_state->attach(arg.exit_char, end);
 	arg.states.push_back(end);
 	for (size_t i = 0; i < arg.states.size(); i++)
-		(*arg.states[i]).assign_num(i);
+		arg.states[i]->assign_num(i);
 	return std::move(arg);
 }
 std::vector<bool> &NFA::Closure(std::vector<bool> &subset) const
@@ -240,8 +240,8 @@ std::vector<bool> NFA::Move(const std::vector<bool> &subset, char c) const
 		if (subset[i])
 		{
 			std::vector<size_t> trans = states[i]->trans_list(c);
-			for (size_t j = 0; j < trans.size(); j++)
-				result[trans[j]] = true;
+			for (auto tran : trans)
+				result[tran] = true;
 		}
 	}
 	return Closure(result);
@@ -254,8 +254,8 @@ void NFA::closure_recursion(size_t current, size_t checked, std::vector<bool> &s
 	{
 		subset[current] = true;
 		std::vector<size_t> trans = states[current]->trans_list('\0');
-		for (size_t i = 0; i < trans.size(); i++)
-			closure_recursion(trans[i], checked, subset);
+		for (auto tran : trans)
+			closure_recursion(tran, checked, subset);
 	}
 }
 NFA NFA::Concatenate(NFA &&lhs, NFA &&rhs)
@@ -267,10 +267,10 @@ NFA NFA::Concatenate(NFA &&lhs, NFA &&rhs)
 	lhs.exit_state->attach(lhs.exit_char, rhs.states[0]);
 	NFA result;
 	result.states.reserve(lhs.states.size() + rhs.states.size() + 1);
-	for (size_t i = 0; i < lhs.states.size(); i++)
-		result.states.push_back(lhs.states[i]);
-	for (size_t i = 0; i < rhs.states.size(); i++)
-		result.states.push_back(rhs.states[i]);
+	for (auto state : lhs.states)
+		result.states.push_back(state);
+	for (auto state : rhs.states)
+		result.states.push_back(state);
 	result.exit_char = rhs.exit_char;
 	result.exit_state = rhs.exit_state;
 	lhs.states.clear();
@@ -291,10 +291,10 @@ NFA NFA::Or(NFA &&lhs, NFA &&rhs)
 	NFA result;
 	result.states.reserve(lhs.states.size() + rhs.states.size() + 3);
 	result.states.push_back(in);
-	for (size_t i = 0; i < lhs.states.size(); i++)
-		result.states.push_back(lhs.states[i]);
-	for (size_t i = 0; i < rhs.states.size(); i++)
-		result.states.push_back(rhs.states[i]);
+	for (auto state : lhs.states)
+		result.states.push_back(state);
+	for (auto state : rhs.states)
+		result.states.push_back(state);
 	result.states.push_back(out);
 	result.exit_char = '\0';
 	result.exit_state = out;
@@ -312,8 +312,8 @@ NFA NFA::Star(NFA &&arg)
 	NFA result;
 	result.states.reserve(arg.states.size() + 2);
 	result.states.push_back(hub);
-	for (size_t i = 0; i < arg.states.size(); i++)
-		result.states.push_back(arg.states[i]);
+	for (auto state : arg.states)
+		result.states.push_back(state);
 	result.exit_char = '\0';
 	result.exit_state = hub;
 	arg.states.clear();
@@ -330,8 +330,8 @@ NFA NFA::Plus(NFA &&arg)
 	NFA result;
 	result.states.reserve(arg.states.size() + 3);
 	result.states.push_back(in);
-	for (size_t i = 0; i < arg.states.size(); i++)
-		result.states.push_back(arg.states[i]);
+	for (auto state : arg.states)
+		result.states.push_back(state);
 	result.states.push_back(out);
 	result.exit_char = '\0';
 	result.exit_state = out;
@@ -360,9 +360,9 @@ std::vector<size_t> NFA::State::trans_list(char c) const
 {
 	std::vector<size_t> result;
 	result.reserve(transitions.size());
-	for (size_t i = 0; i < transitions.size(); i++)
-		if (transitions[i].c == c)
-			result.push_back(transitions[i].state->state_num);
+	for (auto trans : transitions)
+		if (trans.c == c)
+			result.push_back(trans.state->state_num);
 	return result;
 }
 bool NFA::State::is_accepting() const
@@ -419,13 +419,13 @@ DFA::DFA(const DFA &dfa)
 	};
 	std::vector<size_t> states;
 	states.reserve(dfa.state_info.size());
-	size_t num_states = 2;
+	size_t num_states = 1;
 	if (dfa.state_info[0].accepting)
-		for (size_t index = 0; index < dfa.state_info.size(); index++)
-			states.push_back(dfa.state_info[index].accepting ? 1 : 2);
+		for (auto info : dfa.state_info)
+			states.push_back(info.accepting ? 1 : (num_states = 2));
 	else
-		for (size_t index = 0; index < dfa.state_info.size(); index++)
-			states.push_back(dfa.state_info[index].accepting ? 2 : 1);
+		for (auto info : dfa.state_info)
+			states.push_back(info.accepting ? (num_states = 2) : 1);
 	bool consistent = false;
 	while (!consistent)
 	{
@@ -475,8 +475,8 @@ DFA::DFA(const DFA &dfa)
 }
 bool DFA::is_nonempty(const std::vector<bool> &subset)
 {
-	for (std::vector<bool>::const_iterator it = subset.cbegin(); it != subset.end(); it++)
-		if (*it == true)
+	for (auto element : subset)
+		if (element == true)
 			return true;
 	return false;
 }
