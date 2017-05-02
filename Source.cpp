@@ -169,6 +169,7 @@ int main(int argc, char *argv[])
 		DFA dfa(nfa);
 		DFA optimal(dfa);
 		dfa.PrintStates();
+		std::cout << std::endl;
 		optimal.PrintStates();
 
 		std::ofstream out(argc < 2 ? "out.cpp" : argv[1]);
