@@ -7,6 +7,7 @@
 #include <chrono>
 
 using std::move;
+using std::vector;
 
 #define EPSILON		0
 
@@ -19,53 +20,55 @@ typedef std::unique_ptr<Node> pNode;
 class NFA
 {
 public:
-	NFA() : exitState(nullptr) {};
+	NFA() = default;
 	NFA(char c);
 	NFA(const NFA &) = delete;
 	NFA(NFA &&mov) = default;
 	NFA &operator=(const NFA &) = delete;
 	NFA &operator=(NFA &&rhs) = default;
-	std::vector<bool> &Closure(std::vector<bool> &subset) const;
-	std::vector<bool> Move(const std::vector<bool> &subset, size_t cIndex) const;
-	static NFA Complete(NFA &&arg);
+	vector<bool> &Closure(vector<bool> &subset) const;
+	vector<bool> Move(const vector<bool> &subset, size_t cIndex) const;
+	static NFA Complete(NFA &&arg, size_t acceptingType);
 	static NFA Concatenate(NFA &&lhs, NFA &&rhs);
 	static NFA Or(NFA &&lhs, NFA &&rhs);
 	static NFA Star(NFA &&arg);
 	static NFA Plus(NFA &&arg);
+	static NFA Merge(vector<NFA> &&nfas);
+
 	size_t Size() const;
-	size_t Accepting() const;
+	size_t Accepting(const vector<bool> &subset) const;
 
 	static char Alphabet(size_t index) { return alphabet[index]; }
 	static size_t AlphabetSize() { return alphabet.size(); }
 private:
 	class State;
 	typedef std::unique_ptr<State> pState;
-	void closureRecursion(size_t current, size_t checked, std::vector<bool> &subset) const;
+	void closureRecursion(size_t current, size_t checked, vector<bool> &subset) const;
 	size_t exitCIndex;							// all references to exit_char need to be readjusted
 	State *exitState;
-	std::vector<pState> states;
+	vector<pState> states;
 
 	static size_t charIndex(char c);
-	static std::vector<char> alphabet;
+	static vector<char> alphabet;
 };
-std::vector<char> NFA::alphabet(1, '\0');
+vector<char> NFA::alphabet(1, '\0');
 class NFA::State
 {
 public:
-	State(bool accepting = false) : accepting(accepting) {}
+	State(size_t accepting = 0) : accepting(accepting) {}
 	void attach(size_t cIndex, State *to);
 	void assignNum(size_t num);
-	std::vector<size_t> transList(size_t cIndex) const;
-	bool isAccepting() const;
+	vector<size_t> transList(size_t cIndex) const;
+	size_t AcceptingType() const;
 private:
-	bool accepting;
+	size_t accepting;
 	size_t stateNum;
 	struct Transition
 	{
 		const size_t cIndex;
 		State *const state;
 	};
-	std::vector<Transition> transitions;
+	vector<Transition> transitions;
 };
 
 class DFA
@@ -82,10 +85,10 @@ private:
 
 	struct StateInfo
 	{
-		bool accepting = false;
-		std::vector<size_t> transitions = std::vector<size_t>(NFA::AlphabetSize(), EPSILON);
+		size_t accepting = 0;
+		vector<size_t> transitions = vector<size_t>(NFA::AlphabetSize(), EPSILON);
 	};
-	std::vector<StateInfo> stateInfo;
+	vector<StateInfo> stateInfo;
 };
 
 class Node
@@ -97,7 +100,7 @@ class Tree
 {
 public:
 	Tree(const std::string &input);
-	NFA GenNfa() const { return NFA::Complete(node->GenNfa()); }
+	NFA GenNfa(size_t acceptingType) const { return NFA::Complete(node->GenNfa(), acceptingType); }
 private:
 	pNode node;
 };
@@ -112,7 +115,7 @@ private:
 class NonTerminal : public Node
 {
 protected:
-	std::vector<pNode> nodes;
+	vector<pNode> nodes;
 };
 class Q : public NonTerminal
 {
@@ -159,61 +162,64 @@ public:
 
 int main(int argc, char *argv[])
 {
-	std::chrono::time_point<std::chrono::high_resolution_clock> t0;
+	//std::chrono::time_point<std::chrono::high_resolution_clock> t0;
 	try 
 	{
-		std::string expression;
-		std::cout << "Regular Expression: ";
-		std::cin >> expression;
-		t0 = std::chrono::high_resolution_clock::now();
-		Tree syntaxTree(expression);
-		NFA nfa = syntaxTree.GenNfa();
+		vector<NFA> nfas;
+		for (size_t i = 1;; i++)
+		{
+			std::string expression;
+			std::cout << "Regular Expression: ";
+			std::cin >> expression;
+			if (expression == "$")
+				break;
+			Tree syntaxTree(expression);
+			nfas.push_back(syntaxTree.GenNfa(i));
+		}
+		NFA nfa(NFA::Merge(move(nfas)));
 		DFA dfa(nfa);
 		DFA optimal(dfa);
 		dfa.PrintStates();
 		std::cout << std::endl;
 		optimal.PrintStates();
 
-		std::ofstream out(argc < 2 ? "out.cpp" : argv[1]);
+		/*std::ofstream out(argc < 2 ? "out.cpp" : argv[1]);
 
 		optimal.PrintHeaders(out);
 		out << std::endl;
 		optimal.PrintDefinitions(out);
-		out.close();
+		out.close();*/
 	}
 	catch (char *msg)
 	{
 		std::cout << msg << std::endl;
 	}
-	std::chrono::time_point<std::chrono::high_resolution_clock> t = std::chrono::high_resolution_clock::now();
-	std::cout << "\nExecution time: " << std::chrono::duration_cast<std::chrono::microseconds>(t - t0).count() << std::endl;
+	//std::chrono::time_point<std::chrono::high_resolution_clock> t = std::chrono::high_resolution_clock::now();
+	//std::cout << "\nExecution time: " << std::chrono::duration_cast<std::chrono::microseconds>(t - t0).count() << std::endl;
 	system("pause");
 }
 
-// code to expand alphabet should be added here
 NFA::NFA(char c) : exitCIndex(charIndex(c))
 {
 	states.emplace_back(new State);
 	exitState = states.back().get();
 }
-NFA NFA::Complete(NFA &&arg)
+NFA NFA::Complete(NFA &&arg, size_t acceptingType)
 {
-	arg.states.emplace_back(new State(true));
+	arg.states.emplace_back(new State(acceptingType));
 	arg.exitState->attach(arg.exitCIndex, arg.states.back().get());
-	for (size_t i = 0; i < arg.states.size(); i++)
-		arg.states[i]->assignNum(i);
 	return move(arg);
 }
-std::vector<bool> &NFA::Closure(std::vector<bool> &subset) const
+vector<bool> &NFA::Closure(vector<bool> &subset) const
 {
 	for (size_t i = 0; i < subset.size(); i++)
 		if (subset[i])
 			closureRecursion(i, i, subset);
 	return subset;
 }
-std::vector<bool> NFA::Move(const std::vector<bool> &subset, size_t cIndex) const
+vector<bool> NFA::Move(const vector<bool> &subset, size_t cIndex) const
 {
-	std::vector<bool> result(states.size(), false);
+	vector<bool> result(states.size(), false);
 	for (size_t i = 0; i < subset.size(); i++)
 	{
 		if (subset[i])
@@ -224,7 +230,7 @@ std::vector<bool> NFA::Move(const std::vector<bool> &subset, size_t cIndex) cons
 	}
 	return Closure(result);
 }
-void NFA::closureRecursion(size_t current, size_t checked, std::vector<bool> &subset) const
+void NFA::closureRecursion(size_t current, size_t checked, vector<bool> &subset) const
 {
 	if (current > checked)
 		subset[current] = true;
@@ -309,16 +315,39 @@ NFA NFA::Plus(NFA &&arg)
 	result.states.push_back(move(out));
 	return result;
 }
+NFA NFA::Merge(vector<NFA> &&nfas)
+{
+	NFA result;
+	pState in(new State);
+	for (auto &nfa : nfas)
+		in->attach(EPSILON, nfa.states[0].get());
+	result.states.push_back(move(in));
+	for (auto &nfa : nfas)
+		for (auto &state : nfa.states)
+			result.states.emplace_back(move(state));
+	for (size_t i = 0; i < result.states.size(); i++)
+		result.states[i]->assignNum(i);
+	return result;
+}
 size_t NFA::Size() const
 {
 	return states.size();
 }
-size_t NFA::Accepting() const
+size_t NFA::Accepting(const vector<bool> &subset) const
 {
+	size_t result = states.size() + 1;
 	for (size_t i = 0; i < states.size(); i++)
-		if (states[i]->isAccepting())
-			return i;
-	throw "NFA::Accepting: No accepting state found!";
+	{
+		if (subset[i])
+		{
+			size_t acceptingType = states[i]->AcceptingType();
+			if (acceptingType && acceptingType < result)
+				result = acceptingType;
+		}
+	}
+	if (result == states.size() + 1)
+		return 0;
+	return result;
 }
 void NFA::State::attach(size_t cIndex, NFA::State *to)				// all references need to be adjusted to give cIndex instead of c
 {
@@ -328,22 +357,22 @@ void NFA::State::assignNum(size_t num)
 {
 	stateNum = num;
 }
-std::vector<size_t> NFA::State::transList(size_t cIndex) const		// all references need to be adjusted to give cIndex instead of c
+vector<size_t> NFA::State::transList(size_t cIndex) const		// all references need to be adjusted to give cIndex instead of c
 {
-	std::vector<size_t> result;
+	vector<size_t> result;
 	result.reserve(transitions.size());
 	for (auto trans : transitions)
 		if (trans.cIndex == cIndex)
 			result.push_back(trans.state->stateNum);
 	return result;
 }
-bool NFA::State::isAccepting() const
+size_t NFA::State::AcceptingType() const
 {
 	return accepting;
 }
 size_t NFA::charIndex(char c)
 {
-	std::vector<char>::const_iterator it = std::find(alphabet.begin(), alphabet.end(), c);
+	vector<char>::const_iterator it = std::find(alphabet.begin(), alphabet.end(), c);
 	size_t index = it - alphabet.begin();
 	if (it == alphabet.end())
 		alphabet.push_back(c);
@@ -352,13 +381,12 @@ size_t NFA::charIndex(char c)
 
 DFA::DFA(const NFA &nfa)
 {
-	std::vector<std::vector<bool>> states;
-	std::vector<bool> stateSet(nfa.Size(), false);
+	vector<vector<bool>> states;
+	vector<bool> stateSet(nfa.Size(), false);
 	stateSet[0] = true;
-	states.push_back(nfa.Closure(stateSet));
-	stateInfo.push_back(StateInfo());
-	if (stateSet[nfa.Accepting()])
-		stateInfo[0].accepting = true;
+	states.push_back(move(nfa.Closure(stateSet)));
+	stateInfo.emplace_back();
+	stateInfo[0].accepting = nfa.Accepting(states[0]);
 	for (size_t stateIndex = 0; stateIndex < states.size(); stateIndex++)
 	{
 		for (size_t charIndex = 1; charIndex < NFA::AlphabetSize(); charIndex++)
@@ -370,14 +398,13 @@ DFA::DFA(const NFA &nfa)
 				{
 					if (prevStateIndex == states.size())
 					{
-						states.push_back(stateSet);
-						stateInfo.push_back(StateInfo());
-						if (stateSet[nfa.Accepting()])
-							stateInfo[prevStateIndex].accepting = true;
+						states.push_back(move(stateSet));
+						stateInfo.emplace_back(StateInfo());
+						stateInfo[prevStateIndex].accepting = nfa.Accepting(states[prevStateIndex]);
 						stateInfo[stateIndex].transitions[charIndex] = prevStateIndex + 1;
 						break;
 					}
-					if (stateSet == states[prevStateIndex])
+					else if (stateSet == states[prevStateIndex])
 					{
 						stateInfo[stateIndex].transitions[charIndex] = prevStateIndex + 1;
 						break;
@@ -396,24 +423,31 @@ DFA::DFA(const DFA &dfa)
 		size_t fromOld, fromNew, to;
 		bool marked;
 	};
-	std::vector<size_t> states;
+	vector<size_t> states;
 	states.reserve(dfa.stateInfo.size());
 	size_t numStates = 1;
-	if (dfa.stateInfo[0].accepting)
-		for (auto info : dfa.stateInfo)
-			states.push_back(info.accepting ? 1 : (numStates = 2));
-	else
-		for (auto info : dfa.stateInfo)
-			states.push_back(info.accepting ? (numStates = 2) : 1);
+	bool nonAccepting = false;
+	for (auto info : dfa.stateInfo)
+	{
+		if (!info.accepting)
+			nonAccepting = true;
+		if (info.accepting > numStates)
+			numStates = info.accepting;
+	}
+	if (nonAccepting)
+		numStates++;
+	size_t offset = numStates - dfa.stateInfo[0].accepting;
+	for (auto info : dfa.stateInfo)
+		states.push_back((info.accepting + offset) % numStates + 1);
 	bool consistent = false;
 	while (!consistent)
 	{
 		consistent = true;
 		for (size_t charIndex = 1; charIndex < NFA::AlphabetSize(); charIndex++)
 		{
-			std::vector<transition> transitions;
+			vector<transition> transitions;
 			transitions.reserve(states.size());
-			std::vector<size_t> currentTransVals(numStates);
+			vector<size_t> currentTransVals(numStates);
 			for (size_t dfaState = states.size(); dfaState-- > 0;)
 			{
 				size_t trans = (dfa.stateInfo[dfaState].transitions[charIndex] == 0) ?
@@ -444,7 +478,7 @@ DFA::DFA(const DFA &dfa)
 			}
 		}
 	}
-	stateInfo = std::vector<StateInfo>(numStates);
+	stateInfo = vector<StateInfo>(numStates);
 	for (size_t i = 0; i < states.size(); i++)
 	{
 		stateInfo[states[i] - 1].accepting = dfa.stateInfo[i].accepting;
@@ -452,7 +486,7 @@ DFA::DFA(const DFA &dfa)
 			stateInfo[states[i] - 1].transitions[j] = (dfa.stateInfo[i].transitions[j] == 0) ? 0 : states[dfa.stateInfo[i].transitions[j] - 1];
 	}
 }
-bool DFA::isNonempty(const std::vector<bool> &subset)
+bool DFA::isNonempty(const vector<bool> &subset)
 {
 	for (auto element : subset)
 		if (element == true)
@@ -464,7 +498,10 @@ void DFA::PrintStates() const
 {
 	for (size_t i = 0; i < stateInfo.size(); i++)
 	{
-		std::cout << "State " << i + 1 << ": " << (stateInfo[i].accepting ? "Accepting\n" : "\n");
+		std::cout << "State " << i + 1 << ": ";
+		if (stateInfo[i].accepting)
+			std::cout << "Accepts " << stateInfo[i].accepting;
+		std::cout << std::endl;
 		for (size_t j = 1; j < NFA::AlphabetSize(); j++)
 			if (stateInfo[i].transitions[j] != 0)
 				std::cout << "\tMove(" << i + 1 << ", " << NFA::Alphabet(j) << ") = " << stateInfo[i].transitions[j] << std::endl;
