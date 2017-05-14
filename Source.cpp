@@ -20,7 +20,7 @@ class NFA
 {
 public:
 	NFA() : exitState(nullptr) {};
-	NFA(char c) : exitCIndex(charIndex(c)),  {}
+	NFA(char c);
 	NFA(const NFA &) = delete;
 	NFA(NFA &&mov) = default;
 	NFA &operator=(const NFA &) = delete;
@@ -191,6 +191,11 @@ int main(int argc, char *argv[])
 }
 
 // code to expand alphabet should be added here
+NFA::NFA(char c) : exitCIndex(charIndex(c))
+{
+	states.emplace_back(new State);
+	exitState = states.back().get();
+}
 NFA NFA::Complete(NFA &&arg)
 {
 	arg.states.emplace_back(new State(true));
