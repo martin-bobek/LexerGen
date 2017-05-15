@@ -5,6 +5,7 @@
 #include <vector>
 #include <memory>
 #include <chrono>
+#include <cctype>
 
 using std::move;
 using std::vector;
@@ -16,6 +17,8 @@ typedef std::unique_ptr<Node> pNode;
 // produces ugly code for input (cba)*(a|b)
 
 // char index 0 is reserved for epsilon transition
+
+std::string ToUpper(const std::string &src);
 
 class NFA
 {
@@ -78,8 +81,10 @@ public:
 	DFA(const DFA &dfa);
 
 	void PrintStates() const;
-	void PrintHeaders(std::ostream &out) const;
+	void PrintHeader(std::ostream &out) const;
 	void PrintDefinitions(std::ostream &out) const;
+
+	static vector<std::string> Types;									/// figure out a better way of doing this
 private:
 	static bool isNonempty(const std::vector<bool> &subset);
 
@@ -90,6 +95,7 @@ private:
 	};
 	vector<StateInfo> stateInfo;
 };
+vector<std::string> DFA::Types = vector<std::string>();
 
 class Node
 {
@@ -173,18 +179,20 @@ int main(int argc, char *argv[])
 			std::cin >> expression;
 			if (expression == "$")
 				break;
+			DFA::Types.push_back(move(expression));
+			std::cout << "\t-> ";
+			std::cin >> expression;
 			Tree syntaxTree(expression);
 			nfas.push_back(syntaxTree.GenNfa(i));
 		}
-		NFA nfa(NFA::Merge(move(nfas)));
-		DFA dfa(nfa);
-		DFA optimal(dfa);
+		DFA dfa = DFA(DFA(NFA::Merge(move(nfas))));
 		dfa.PrintStates();
-		std::cout << std::endl;
-		optimal.PrintStates();
+		std::ofstream out(argc < 2 ? "out.cpp" : argv[1]);
+		dfa.PrintHeader(out);
+		dfa.PrintDefinitions(out);
 
-		/*std::ofstream out(argc < 2 ? "out.cpp" : argv[1]);
-
+		
+		/*
 		optimal.PrintHeaders(out);
 		out << std::endl;
 		optimal.PrintDefinitions(out);
@@ -500,43 +508,156 @@ void DFA::PrintStates() const
 	{
 		std::cout << "State " << i + 1 << ": ";
 		if (stateInfo[i].accepting)
-			std::cout << "Accepts " << stateInfo[i].accepting;
+			std::cout << "Accepts " << DFA::Types[stateInfo[i].accepting - 1];
 		std::cout << std::endl;
 		for (size_t j = 1; j < NFA::AlphabetSize(); j++)
 			if (stateInfo[i].transitions[j] != 0)
 				std::cout << "\tMove(" << i + 1 << ", " << NFA::Alphabet(j) << ") = " << stateInfo[i].transitions[j] << std::endl;
 	}
 }
-void DFA::PrintHeaders(std::ostream &out) const
+void DFA::PrintHeader(std::ostream &out) const
 {
-	for (size_t i = 0; i < stateInfo.size(); )
-		out << "bool State_" << ++i << "(std::string::const_iterator it, std::string::const_iterator end);" << std::endl;
+	out << "#include <iostream>\n"
+		"#include <istream>\n"
+		"#include <memory>\n"
+		"#include <string>\n"
+		"#include <vector>\n\n"
+		"using std::cin;\n"
+		"using std::cout;\n"
+		"using std::endl;\n"
+		"using std::move;\n"
+		"using std::istream;\n"
+		"using std::ostream;\n"
+		"using std::string;\n"
+		"using std::vector;\n"
+		"class Terminal;\n"
+		"typedef string::const_iterator Iterator;\n"
+		"typedef std::unique_ptr<Terminal> pTerminal;\n\n"
+		"class Lexer\n"
+		"{\n"
+		"public:\n"
+		"\tstruct Error\n"
+		"\t{\n"
+		"\t\tstring Token;\n"
+		"\t};\n\n"
+		"\tLexer(istream &in) : in(in) {}\n"
+		"\tbool CreateTokens();\n"
+		"\tvector<pTerminal> GetTokens() { return move(tokens); };\n"
+		"\tError GetErrorReport() { return move(err); }\n"
+		"private:\n"
+		"\tenum Type { INVALID";
+	for (const auto &type : Types)
+		out << ", " << ToUpper(type);
+	out << " };\n\n";
+	for (size_t i = 1; i <= stateInfo.size(); i++)
+		out << "\tstatic Type State_" << i << "(Iterator &it, Iterator end);\n";
+	out << "\n\tistream &in;\n"
+		"\tvector<pTerminal> tokens;\n"
+		"\tError err;\n"
+		"};\n\n"
+		"class Terminal\n"
+		"{\n"
+		"public:\n"
+		"\tvirtual ~Terminal() = 0 {}\n"
+		"\tfriend ostream &operator<<(ostream &os, const Terminal &term) { return term.print(os); }\n"
+		"private:\n"
+		"\tvirtual ostream &print(ostream &os) const = 0;\n"
+		"};\n";
+	for (const auto &type : Types)
+		out << "class " << type << " : public Terminal\n"
+			"{\n"
+			"public:\n"
+			"\tUpper(string &&value) : value(move(value)) {}\n"
+			"\t~Upper() = default;\n"
+			"private:\n"
+			"\tostream &print(ostream &os) const { return os << \"" << ToUpper(type) << "[\" << value << ']'; }\n"
+			"\tconst string value;\n"
+			"};\n";
+
+	out << "\n\nbool Lexer::CreateTokens()\n"
+		"{\n"
+		"\tstring word;\n"
+		"\twhile (in >> word)\n"
+		"\t{\n"
+		"\t\tIterator begin = word.begin(), it = begin, end = word.end();\n"
+		"\t\tdo\n"
+		"\t\t{\n"
+		"\t\t\tType type = State_1(it, end);\n"
+		"\t\t\tswitch (type)\n"
+		"\t\t\t{\n";
+	for (const auto &type : Types)
+		out << "\t\t\tcase " << ToUpper(type) << ":\n"
+			"\t\t\t\ttokens.emplace_back(new " << type << "(string(begin, it)));\n"
+			"\t\t\t\tbreak;\n";
+	out << "\t\t\tdefault:\n"
+		"\t\t\t\terr = { string(begin, end) };\n"
+		"\t\t\t\treturn false;\n"
+		"\t\t\t}\n"
+		"\t\t\tbegin = it;\n"
+		"\t\t} while (it != end);\n"
+		"\t}\n"
+		"}";
 }
 void DFA::PrintDefinitions(std::ostream &out) const
 {
 	for (size_t i = 0; i < stateInfo.size(); i++)
 	{
-		out << "bool State_" << i + 1 << "(std::string::const_iterator it, std::string::const_iterator end)\n";
-		out << "{\n";
-		out << "\tif (it != end)\n";
-		out << "\t{\n";
-		out << "\t\tswitch (*it++)\n";
-		out << "\t\t{\n";
-		for (size_t j = 1; j < NFA::AlphabetSize(); j++)
+		out << "\nLexer::Type Lexer::State_" << i + 1 << "(Iterator &it, Iterator end)\n"
+			"{\n"
+			"\tif (it != end)\n"
+			"\t{\n";
+		if (stateInfo[i].accepting)
 		{
-			if (stateInfo[i].transitions[j] != 0)
-			{
-				out << "\t\tcase '" << NFA::Alphabet(j) << "':\n";
-				out << "\t\t\treturn State_" << stateInfo[i].transitions[j] << "(it, end);\n";
+			out << "\t\tIterator cont = it;\n"
+				"\t\tbool contValid;\n"
+				"\t\tswitch (*cont++)\n"
+				"\t\t{\n";
+			size_t size = stateInfo[i].transitions.size();
+			vector<bool> marked(size, false);
+			for (size_t j = 1; j < size; j++) {
+				size_t transition = stateInfo[i].transitions[j];
+				if (!marked[j] && transition) {
+					for (size_t k = j; k < size; k++) {
+						if (stateInfo[i].transitions[k] == transition) {
+							marked[k] = true;
+							out << "\t\tcase '" << NFA::Alphabet(k) << "':\n";
+						}
+					}
+					out << "\t\t\tcontValid = State_" << transition << "(cont, end);\n"
+						"\t\t\tbreak;\n";
+				}
 			}
+			out << "\t\tdefault:\n"
+				"\t\t\treturn " << ToUpper(Types[stateInfo[i].accepting - 1]) << ";\n"
+				"\t\t}\n"
+				"\t\tif (contValid)\n"
+				"\t\t\tit = cont;\n"
+				"\t}\n"
+				"\treturn " << ToUpper(Types[stateInfo[i].accepting - 1]) << ";\n";
 		}
-		out << "\t\tdefault :\n";
-		out << "\t\t\treturn false;\n";
-		out << "\t\t}\n";
-		out << "\t}\n";
-		out << "\telse\n";
-		out << "\t\treturn " << (stateInfo[i].accepting ? "true;\n" : "false;\n");
-		out << "}" << std::endl;
+		else
+		{
+			out << "\t\tswitch (*it++)\n"
+				"\t\t{\n";
+			size_t size = stateInfo[i].transitions.size();
+			vector<bool> marked(size, false);
+			for (size_t j = 1; j < size; j++) {
+				size_t transition = stateInfo[i].transitions[j];
+				if (!marked[j] && transition) {
+					for (size_t k = j; k < size; k++) {
+						if (stateInfo[i].transitions[k] == transition) {
+							marked[k] = true;
+							out << "\t\tcase '" << NFA::Alphabet(k) << "':\n";
+						}
+					}
+					out << "\t\t\treturn State_" << transition << "(it, end);\n";
+				}
+			}
+			out << "\t\t}\n"
+				"\t}\n"
+				"\treturn INVALID;\n";
+		}
+		out << "}";
 	}
 }
 
@@ -684,4 +805,11 @@ NFA W::GenNfa(NFA &&nfa) const
 	if (nodes.size() == 1)
 		return nodes[0]->GenNfa();
 	return nodes[1]->GenNfa();
+}
+
+std::string ToUpper(const std::string &src)
+{
+	std::string result(src.size(), '\0');
+	std::transform(src.begin(), src.end(), result.begin(), std::toupper);
+	return result;
 }
