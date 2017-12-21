@@ -407,7 +407,7 @@ DFA::DFA(const NFA &nfa)
 					if (prevStateIndex == states.size())
 					{
 						states.push_back(move(stateSet));
-						stateInfo.emplace_back(StateInfo());
+						stateInfo.emplace_back();
 						stateInfo[prevStateIndex].accepting = nfa.Accepting(states[prevStateIndex]);
 						stateInfo[stateIndex].transitions[charIndex] = prevStateIndex + 1;
 						break;
@@ -494,7 +494,7 @@ DFA::DFA(const DFA &dfa)
 			stateInfo[states[i] - 1].transitions[j] = (dfa.stateInfo[i].transitions[j] == 0) ? 0 : states[dfa.stateInfo[i].transitions[j] - 1];
 	}
 }
-bool DFA::isNonempty(const vector<bool> &subset)
+bool DFA::isNonempty(const vector<bool> &subset)				// should be static
 {
 	for (auto element : subset)
 		if (element == true)
