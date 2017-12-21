@@ -596,6 +596,7 @@ void DFA::PrintHeader(std::ostream &out) const
 		"\t\t\tbegin = it;\n"
 		"\t\t} while (it != end);\n"
 		"\t}\n"
+		"\treturn = true;\n"
 		"}";
 }
 void DFA::PrintDefinitions(std::ostream &out) const
