@@ -97,6 +97,24 @@ private:
 };
 vector<std::string> DFA::Types = vector<std::string>();
 
+class Iterator
+{
+public:
+	Iterator(const std::string::const_iterator &it) : it(it) {}
+	Iterator(const Iterator &it) = default;
+	~Iterator() = default;
+	Iterator &operator=(const Iterator &rhs) = default;
+	Iterator &operator++();
+	Iterator operator++(int);
+	bool operator==(const Iterator &rhs) const { return it == rhs.it; }
+	bool operator!=(const Iterator &rhs) const { return it != rhs.it; }
+	char operator*() const;
+	bool IsChar() const;
+	char C() const;
+private:
+	std::string::const_iterator it;
+};
+
 class Node
 {
 public:
@@ -126,43 +144,43 @@ protected:
 class Q : public NonTerminal
 {
 public:
-	Q(std::string::const_iterator &it, std::string::const_iterator end);
+	Q(Iterator &it, Iterator end);
 	NFA GenNfa(NFA &&nfa = NFA()) const;
 };
 class R : public NonTerminal
 {
 public:
-	R(std::string::const_iterator &it, std::string::const_iterator end);
+	R(Iterator &it, Iterator end);
 	NFA GenNfa(NFA &&nfa = NFA()) const;
 };
 class S : public NonTerminal
 {
 public:
-	S(std::string::const_iterator &it, std::string::const_iterator end);
+	S(Iterator &it, Iterator end);
 	NFA GenNfa(NFA &&nfa = NFA()) const;
 };
 class T : public NonTerminal
 {
 public:
-	T(std::string::const_iterator &it, std::string::const_iterator end);
+	T(Iterator &it, Iterator end);
 	NFA GenNfa(NFA &&nfa = NFA()) const;
 };
 class U : public NonTerminal
 {
 public:
-	U(std::string::const_iterator &it, std::string::const_iterator end);
+	U(Iterator &it, Iterator end);
 	NFA GenNfa(NFA &&nfa = NFA()) const;
 };
 class V : public NonTerminal
 {
 public:
-	V(std::string::const_iterator &it, std::string::const_iterator end);
+	V(Iterator &it, Iterator end);
 	NFA GenNfa(NFA &&nfa = NFA()) const;
 };
 class W : public NonTerminal
 {
 public:
-	W(std::string::const_iterator &it, std::string::const_iterator end);
+	W(Iterator &it, Iterator end);
 	NFA GenNfa(NFA &&nfa = NFA()) const;
 };
 
@@ -662,12 +680,43 @@ void DFA::PrintDefinitions(std::ostream &out) const
 	}
 }
 
+Iterator &Iterator::operator++()
+{
+	if (*it == '\\')
+		it++;
+	it++;
+	return *this;
+}
+Iterator Iterator::operator++(int)
+{
+	Iterator temp = *this;
+	++*this;
+	return temp;
+}
+char Iterator::operator*() const
+{
+	char c = *it;
+	if (c == '(' || c == ')' || c == '*' || c == '|')
+		return c;
+	return '\0';
+}
+bool Iterator::IsChar() const
+{
+	return **this == '\0';
+}
+char Iterator::C() const
+{
+	if (*it == '\\')
+		return *(it + 1);
+	return *it;
+}
+
 Tree::Tree(const std::string &input)
 {
-	std::string::const_iterator it = input.begin(), end = input.end();
+	Iterator it = input.begin(), end = input.end();
 	if (it == end)
 		throw "Tree::Tree 1: Syntax Error!";
-	else if (*it == '(' || (*it >= 'a' && *it <= 'z') || (*it >= 'A' && *it <= 'Z'))
+	else if (*it == '(' || it.IsChar())
 	{
 		node = pNode(new Q(it, end));
 		if (it != end)
@@ -676,11 +725,11 @@ Tree::Tree(const std::string &input)
 	else
 		throw "Tree::Tree 3: Syntax Error!";
 }
-Q::Q(std::string::const_iterator &it, std::string::const_iterator end)
+Q::Q(Iterator &it, Iterator end)
 {
 	if (it == end)
 		throw "Q::Q 1: Syntax Error!";
-	else if (*it == '(' || (*it >= 'a' && *it <= 'z') || (*it >= 'A' && *it <= 'Z'))
+	else if (*it == '(' || it.IsChar())
 	{
 		nodes.emplace_back(new S(it, end));
 		nodes.emplace_back(new R(it, end));
@@ -692,7 +741,7 @@ NFA Q::GenNfa(NFA &&nfa) const
 {
 	return nodes[1]->GenNfa(nodes[0]->GenNfa());
 }
-R::R(std::string::const_iterator &it, std::string::const_iterator end)
+R::R(Iterator &it, Iterator end)
 {
 	if (it == end || *it == ')');
 	else if (*it == '|')
@@ -711,11 +760,11 @@ NFA R::GenNfa(NFA &&nfa) const
 		return std::move(nfa);
 	return NFA::Or(std::move(nfa), nodes[2]->GenNfa(nodes[1]->GenNfa()));
 }
-S::S(std::string::const_iterator &it, std::string::const_iterator end)
+S::S(Iterator &it, Iterator end)
 {
 	if (it == end)
 		throw "S::S 1: Syntax Error!";
-	else if (*it == '(' || (*it >= 'a' && *it <= 'z') || (*it >= 'A' && *it <= 'Z'))
+	else if (*it == '(' || it.IsChar())
 	{
 		nodes.emplace_back(new U(it, end));
 		nodes.emplace_back(new T(it, end));
@@ -727,10 +776,10 @@ NFA S::GenNfa(NFA &&nfa) const
 {
 	return nodes[1]->GenNfa(nodes[0]->GenNfa());
 }
-T::T(std::string::const_iterator &it, std::string::const_iterator end)
+T::T(Iterator &it, Iterator end)
 {
 	if (it == end || *it == '|' || *it == ')');
-	else if (*it == '(' || (*it >= 'a' && *it <= 'z') || (*it >= 'A' && *it <= 'Z'))
+	else if (*it == '(' || it.IsChar())
 	{
 		nodes.emplace_back(new U(it, end));
 		nodes.emplace_back(new T(it, end));
@@ -744,11 +793,11 @@ NFA T::GenNfa(NFA &&nfa) const
 		return std::move(nfa);
 	return nodes[1]->GenNfa(NFA::Concatenate(std::move(nfa), nodes[0]->GenNfa()));
 }
-U::U(std::string::const_iterator &it, std::string::const_iterator end)
+U::U(Iterator &it, Iterator end)
 {
 	if (it == end)
 		throw "U::U 1: Syntax Error!";
-	else if (*it == '(' || (*it >= 'a' && *it <= 'z') || (*it >= 'A' && *it <= 'Z'))
+	else if (*it == '(' || it.IsChar())
 	{
 		nodes.emplace_back(new W(it, end));
 		nodes.emplace_back(new V(it, end));
@@ -760,9 +809,9 @@ NFA U::GenNfa(NFA &&nfa) const
 {
 	return nodes[1]->GenNfa(nodes[0]->GenNfa());
 }
-V::V(std::string::const_iterator &it, std::string::const_iterator end)
+V::V(Iterator &it, Iterator end)
 {
-	if (it == end || *it == '|' || *it == '(' || *it == ')' || (*it >= 'a' && *it <= 'z') || (*it >= 'A' && *it <= 'Z'));
+	if (it == end || *it == '|' || *it == '(' || *it == ')' || it.IsChar());
 	else if (*it == '*')
 	{
 		nodes.emplace_back(new Terminal('*'));
@@ -778,13 +827,13 @@ NFA V::GenNfa(NFA &&nfa) const
 		return std::move(nfa);
 	return NFA::Star(nodes[1]->GenNfa(std::move(nfa)));
 }
-W::W(std::string::const_iterator &it, std::string::const_iterator end)
+W::W(Iterator &it, Iterator end)
 {
 	if (it == end)
 		throw "W::W 1: Syntax Error!";
-	else if ((*it >= 'a' && *it <= 'z') || (*it >= 'A' && *it <= 'Z'))
+	else if (it.IsChar())
 	{
-		nodes.emplace_back(new Terminal(*it));
+		nodes.emplace_back(new Terminal(it.C()));
 		it++;
 	}
 	else if (*it == '(')
