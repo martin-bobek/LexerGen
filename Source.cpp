@@ -222,7 +222,6 @@ int main(int argc, char *argv[])
 	}
 	//std::chrono::time_point<std::chrono::high_resolution_clock> t = std::chrono::high_resolution_clock::now();
 	//std::cout << "\nExecution time: " << std::chrono::duration_cast<std::chrono::microseconds>(t - t0).count() << std::endl;
-	system("pause");
 }
 
 NFA::NFA(char c) : exitCIndex(charIndex(c))
@@ -585,8 +584,8 @@ void DFA::PrintHeader(std::ostream &out) const
 		out << "class " << type << " : public Terminal\n"
 			"{\n"
 			"public:\n"
-			"\tUpper(string &&value) : value(move(value)) {}\n"
-			"\t~Upper() = default;\n"
+			"\t" << type << "(string &&value) : value(move(value)) {}\n"
+			"\t~" << type << "() = default;\n"
 			"private:\n"
 			"\tostream &print(ostream &os) const { return os << \"" << ToUpper(type) << "[\" << value << ']'; }\n"
 			"\tconst string value;\n"
@@ -614,7 +613,7 @@ void DFA::PrintHeader(std::ostream &out) const
 		"\t\t\tbegin = it;\n"
 		"\t\t} while (it != end);\n"
 		"\t}\n"
-		"\treturn = true;\n"
+		"\treturn true;\n"
 		"}";
 }
 void DFA::PrintDefinitions(std::ostream &out) const
@@ -628,7 +627,7 @@ void DFA::PrintDefinitions(std::ostream &out) const
 		if (stateInfo[i].accepting)
 		{
 			out << "\t\tIterator cont = it;\n"
-				"\t\tbool contValid;\n"
+				"\t\tType contValid = INVALID;\n"
 				"\t\tswitch (*cont++)\n"
 				"\t\t{\n";
 			size_t size = stateInfo[i].transitions.size();
@@ -646,11 +645,11 @@ void DFA::PrintDefinitions(std::ostream &out) const
 						"\t\t\tbreak;\n";
 				}
 			}
-			out << "\t\tdefault:\n"
-				"\t\t\treturn " << ToUpper(Types[stateInfo[i].accepting - 1]) << ";\n"
-				"\t\t}\n"
-				"\t\tif (contValid)\n"
+			out << "\t\t}\n"
+				"\t\tif (contValid != INVALID) {\n"
 				"\t\t\tit = cont;\n"
+				"\t\t\treturn contValid;\n"
+				"\t\t}\n"
 				"\t}\n"
 				"\treturn " << ToUpper(Types[stateInfo[i].accepting - 1]) << ";\n";
 		}
@@ -707,7 +706,11 @@ bool Iterator::IsChar() const
 char Iterator::C() const
 {
 	if (*it == '\\')
+	{
+		if (*(it + 1) == '$')
+			return '\0';
 		return *(it + 1);
+	}
 	return *it;
 }
 
@@ -860,6 +863,6 @@ NFA W::GenNfa(NFA &&nfa) const
 std::string ToUpper(const std::string &src)
 {
 	std::string result(src.size(), '\0');
-	std::transform(src.begin(), src.end(), result.begin(), std::toupper);
+	std::transform(src.begin(), src.end(), result.begin(), (int(*)(int))std::toupper);
 	return result;
 }
