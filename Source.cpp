@@ -89,7 +89,7 @@ public:
 	void PrintTerminals(std::ostream &out) const;
 	void PrintDefinitions(std::ostream &out) const;
 
-	static vector<std::string> Types;									/// figure out a better way of doing this
+	static void AddType(std::string &&name);
 private:
 	DFA() = default;
 	static bool isNonempty(const std::vector<bool> &subset);
@@ -100,8 +100,12 @@ private:
 		vector<size_t> transitions = vector<size_t>(NFA::AlphabetSize(), EPSILON);
 	};
 	vector<StateInfo> stateInfo;
+
+	static vector<std::string> types;									/// figure out a better way of doing this
 };
-vector<std::string> DFA::Types = vector<std::string>();
+vector<std::string> DFA::types = vector<std::string>();
+
+
 
 class Iterator
 {
@@ -208,7 +212,7 @@ int main(int argc, char *argv[])
 			std::cin >> expression;
 			if (expression == "$")
 				break;
-			DFA::Types.push_back(move(expression));
+			DFA::AddType(move(expression));
 			std::cout << "\t-> ";
 			std::cin >> expression;
 			Tree syntaxTree(expression);
@@ -537,6 +541,10 @@ bool DFA::isNonempty(const vector<bool> &subset)				// should be static
 			return true;
 	return false;
 }
+void DFA::AddType(std::string &&name)
+{
+	types.push_back(move(name));
+}
 
 void DFA::PrintStates() const
 {
@@ -544,7 +552,7 @@ void DFA::PrintStates() const
 	{
 		std::cout << "State " << i + 1 << ": ";
 		if (stateInfo[i].accepting)
-			std::cout << "Accepts " << DFA::Types[stateInfo[i].accepting - 1];
+			std::cout << "Accepts " << DFA::types[stateInfo[i].accepting - 1];
 		std::cout << std::endl;
 		for (size_t j = 1; j < NFA::AlphabetSize(); j++)
 			if (stateInfo[i].transitions[j] != 0)
@@ -584,7 +592,7 @@ void DFA::PrintClass(std::ostream &out) const
 		"\tError GetErrorReport() { return move(err); }\n"
 		"private:\n"
 		"\tenum Type { INVALID";
-	for (const auto &type : Types)
+	for (const auto &type : types)
 		out << ", " << ToUpper(type);
 	out << " };\n\n";
 	for (size_t i = 1; i <= stateInfo.size(); i++)
@@ -606,7 +614,7 @@ void DFA::PrintTerminals(std::ostream &out) const
 		"\tvirtual std::ostream &print(std::ostream &os) const = 0;\n"
 		"};\n"
 		"Terminal::~Terminal() = default;\n";
-	for (const auto &type : Types)
+	for (const auto &type : types)
 		out << "class " << type << " : public Terminal\n"
 		"{\n"
 		"public:\n"
@@ -630,7 +638,7 @@ void DFA::PrintDefinitions(std::ostream &out) const
 		"\t\t\tType type = State_1(it, end);\n"
 		"\t\t\tswitch (type)\n"
 		"\t\t\t{\n";
-	for (const auto &type : Types)
+	for (const auto &type : types)
 		out << "\t\t\tcase " << ToUpper(type) << ":\n"
 		"\t\t\t\ttokens.emplace_back(new " << type << "(std::string(begin, it)));\n"
 		"\t\t\t\tbreak;\n";
@@ -676,7 +684,7 @@ void DFA::PrintDefinitions(std::ostream &out) const
 				"\t\t\treturn contValid;\n"
 				"\t\t}\n"
 				"\t}\n"
-				"\treturn " << ToUpper(Types[stateInfo[i].accepting - 1]) << ";\n";
+				"\treturn " << ToUpper(types[stateInfo[i].accepting - 1]) << ";\n";
 		}
 		else
 		{
