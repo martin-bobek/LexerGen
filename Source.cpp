@@ -78,14 +78,20 @@ class DFA
 {
 public:
 	DFA(const NFA &nfa);
-	DFA(const DFA &dfa);
-
+	DFA(const DFA &) = delete;
+	DFA(DFA &&) = default;
+	DFA &operator=(const DFA &) = delete;
+	DFA &operator=(DFA &&) = default;
+	static DFA Optimize(const DFA &dfa);
+	
 	void PrintStates() const;
-	void PrintHeader(std::ostream &out) const;
+	void PrintClass(std::ostream &out) const;
+	void PrintTerminals(std::ostream &out) const;
 	void PrintDefinitions(std::ostream &out) const;
 
 	static vector<std::string> Types;									/// figure out a better way of doing this
 private:
+	DFA() = default;
 	static bool isNonempty(const std::vector<bool> &subset);
 
 	struct StateInfo
@@ -189,6 +195,11 @@ int main(int argc, char *argv[])
 	//std::chrono::time_point<std::chrono::high_resolution_clock> t0;
 	try 
 	{
+		if (argc < 4)
+		{
+			std::cerr << "Incorrect number of parameters!" << std::endl;
+			return 0;
+		}
 		vector<NFA> nfas;
 		for (size_t i = 1;; i++)
 		{
@@ -203,12 +214,17 @@ int main(int argc, char *argv[])
 			Tree syntaxTree(expression);
 			nfas.push_back(syntaxTree.GenNfa(i));
 		}
-		DFA dfa = DFA(DFA(NFA::Merge(move(nfas))));
+		DFA dfa = DFA::Optimize(NFA::Merge(move(nfas)));
 		dfa.PrintStates();
-		std::ofstream out(argc < 2 ? "out.cpp" : argv[1]);
-		dfa.PrintHeader(out);
+		std::ofstream out(argv[1]);
+		dfa.PrintClass(out);
+		out.close();
+		out = std::ofstream(argv[2]);
+		dfa.PrintTerminals(out);
+		out.close();
+		out = std::ofstream(argv[3]);
 		dfa.PrintDefinitions(out);
-
+		out.close();
 		
 		/*
 		optimal.PrintHeaders(out);
@@ -441,7 +457,7 @@ DFA::DFA(const NFA &nfa)
 		}
 	}
 }
-DFA::DFA(const DFA &dfa)
+DFA DFA::Optimize(const DFA &dfa)
 {
 	struct transition
 	{
@@ -503,13 +519,16 @@ DFA::DFA(const DFA &dfa)
 			}
 		}
 	}
-	stateInfo = vector<StateInfo>(numStates);
+
+	DFA opt;
+	opt.stateInfo = vector<StateInfo>(numStates);
 	for (size_t i = 0; i < states.size(); i++)
 	{
-		stateInfo[states[i] - 1].accepting = dfa.stateInfo[i].accepting;
+		opt.stateInfo[states[i] - 1].accepting = dfa.stateInfo[i].accepting;
 		for (size_t j = 1; j < NFA::AlphabetSize(); j++)
-			stateInfo[states[i] - 1].transitions[j] = (dfa.stateInfo[i].transitions[j] == 0) ? 0 : states[dfa.stateInfo[i].transitions[j] - 1];
+			opt.stateInfo[states[i] - 1].transitions[j] = (dfa.stateInfo[i].transitions[j] == 0) ? 0 : states[dfa.stateInfo[i].transitions[j] - 1];
 	}
+	return opt;
 }
 bool DFA::isNonempty(const vector<bool> &subset)				// should be static
 {
@@ -532,8 +551,9 @@ void DFA::PrintStates() const
 				std::cout << "\tMove(" << i + 1 << ", " << NFA::Alphabet(j) << ") = " << stateInfo[i].transitions[j] << std::endl;
 	}
 }
-void DFA::PrintHeader(std::ostream &out) const
+void DFA::PrintClass(std::ostream &out) const
 {
+	/*
 	out << "#include <iostream>\n"
 		"#include <istream>\n"
 		"#include <memory>\n"
@@ -550,16 +570,17 @@ void DFA::PrintHeader(std::ostream &out) const
 		"class Terminal;\n"
 		"typedef string::const_iterator Iterator;\n"
 		"typedef std::unique_ptr<Terminal> pTerminal;\n\n"
-		"class Lexer\n"
+	*/
+	out << "class Lexer\n"
 		"{\n"
 		"public:\n"
 		"\tstruct Error\n"
 		"\t{\n"
-		"\t\tstring Token;\n"
+		"\t\tstd::string Token;\n"
 		"\t};\n\n"
-		"\tLexer(istream &in) : in(in) {}\n"
+		"\tLexer(std::istream &in) : in(in) {}\n"
 		"\tbool CreateTokens();\n"
-		"\tvector<pTerminal> GetTokens() { return move(tokens); };\n"
+		"\tstd::vector<pTerminal> GetTokens() { return move(tokens); };\n"
 		"\tError GetErrorReport() { return move(err); }\n"
 		"private:\n"
 		"\tenum Type { INVALID";
@@ -568,32 +589,39 @@ void DFA::PrintHeader(std::ostream &out) const
 	out << " };\n\n";
 	for (size_t i = 1; i <= stateInfo.size(); i++)
 		out << "\tstatic Type State_" << i << "(Iterator &it, Iterator end);\n";
-	out << "\n\tistream &in;\n"
-		"\tvector<pTerminal> tokens;\n"
+	out << "\n\tstd::istream &in;\n"
+		"\tstd::vector<pTerminal> tokens;\n"
 		"\tError err;\n"
-		"};\n\n"
-		"class Terminal\n"
+		"};\n";
+}
+void DFA::PrintTerminals(std::ostream &out) const
+{
+	out << "class Terminal : public Symbol\n"
 		"{\n"
 		"public:\n"
-		"\tvirtual ~Terminal() = 0 {}\n"
-		"\tfriend ostream &operator<<(ostream &os, const Terminal &term) { return term.print(os); }\n"
+		"\tvirtual ~Terminal() = 0;\n"
+		"\tvirtual bool Process(Stack &stack, SymStack &symStack, Parser::Error &err) const = 0;\n"
+		"\tfriend std::ostream &operator<<(std::ostream &os, const Terminal &term) { return term.print(os); }\n"
 		"private:\n"
-		"\tvirtual ostream &print(ostream &os) const = 0;\n"
-		"};\n";
+		"\tvirtual std::ostream &print(std::ostream &os) const = 0;\n"
+		"};\n"
+		"Terminal::~Terminal() = default;\n";
 	for (const auto &type : Types)
 		out << "class " << type << " : public Terminal\n"
-			"{\n"
-			"public:\n"
-			"\t" << type << "(string &&value) : value(move(value)) {}\n"
-			"\t~" << type << "() = default;\n"
-			"private:\n"
-			"\tostream &print(ostream &os) const { return os << \"" << ToUpper(type) << "[\" << value << ']'; }\n"
-			"\tconst string value;\n"
-			"};\n";
-
-	out << "\n\nbool Lexer::CreateTokens()\n"
 		"{\n"
-		"\tstring word;\n"
+		"public:\n"
+		"\t" << type << "(std::string &&value) : value(move(value)) {}\n"
+		"\tbool Process(Stack &stack, SymStack &symStack, Parser::Error &err) const;\n"
+		"private:\n"
+		"\tstd::ostream &print(std::ostream &os) const { return os << \"" << ToUpper(type) << "[\" << value << ']'; }\n"
+		"\tconst std::string value;\n"
+		"};\n";
+}
+void DFA::PrintDefinitions(std::ostream &out) const
+{
+	out << "bool Lexer::CreateTokens()\n"
+		"{\n"
+		"\tstd::string word;\n"
 		"\twhile (in >> word)\n"
 		"\t{\n"
 		"\t\tIterator begin = word.begin(), it = begin, end = word.end();\n"
@@ -604,10 +632,10 @@ void DFA::PrintHeader(std::ostream &out) const
 		"\t\t\t{\n";
 	for (const auto &type : Types)
 		out << "\t\t\tcase " << ToUpper(type) << ":\n"
-			"\t\t\t\ttokens.emplace_back(new " << type << "(string(begin, it)));\n"
-			"\t\t\t\tbreak;\n";
+		"\t\t\t\ttokens.emplace_back(new " << type << "(std::string(begin, it)));\n"
+		"\t\t\t\tbreak;\n";
 	out << "\t\t\tdefault:\n"
-		"\t\t\t\terr = { string(begin, end) };\n"
+		"\t\t\t\terr = { std::string(begin, end) };\n"
 		"\t\t\t\treturn false;\n"
 		"\t\t\t}\n"
 		"\t\t\tbegin = it;\n"
@@ -615,9 +643,6 @@ void DFA::PrintHeader(std::ostream &out) const
 		"\t}\n"
 		"\treturn true;\n"
 		"}";
-}
-void DFA::PrintDefinitions(std::ostream &out) const
-{
 	for (size_t i = 0; i < stateInfo.size(); i++)
 	{
 		out << "\nLexer::Type Lexer::State_" << i + 1 << "(Iterator &it, Iterator end)\n"
