@@ -6,6 +6,7 @@
 #include <memory>
 #include <chrono>
 #include <cctype>
+#include <tuple>
 
 using std::move;
 using std::vector;
@@ -84,12 +85,10 @@ public:
 	DFA &operator=(DFA &&) = default;
 	static DFA Optimize(const DFA &dfa);
 	
-	void PrintStates() const;
-	void PrintClass(std::ostream &out) const;
-	void PrintTerminals(std::ostream &out) const;
-	void PrintDefinitions(std::ostream &out) const;
+	//void PrintStates() const;
 
-	static void AddType(std::string &&name);
+	size_t Size() const { return stateInfo.size(); }
+	std::tuple<size_t, std::vector<size_t>> operator[](size_t state) const { return { stateInfo[state].accepting, stateInfo[state].transitions }; }
 private:
 	DFA() = default;
 	static bool isNonempty(const std::vector<bool> &subset);
@@ -100,12 +99,58 @@ private:
 		vector<size_t> transitions = vector<size_t>(NFA::AlphabetSize(), EPSILON);
 	};
 	vector<StateInfo> stateInfo;
+};
 
+class CodeGen
+{
+public:
+	CodeGen(const DFA &dfa);
+
+	CodeGen(const CodeGen &) = delete;
+	CodeGen(CodeGen &&) = delete;
+	CodeGen &operator=(const CodeGen &) = delete;
+	CodeGen &operator=(CodeGen &&) = delete;
+
+	static void AddType(std::string &&name);
+	void PrintClass(std::ostream &out) const;
+	void PrintTerminals(std::ostream &out) const;
+	void PrintDefinitions(std::ostream &out) const;
+private:
+	class State;
+	struct Transition
+	{
+		Transition(const State *to, size_t charIndex) : to(to), charIndex(charIndex) {}
+		const State *to;
+		size_t charIndex;
+	};
+	typedef std::unique_ptr<State> pState;
+
+	std::vector<pState> states;
+	size_t numStates;
 	static vector<std::string> types;									/// figure out a better way of doing this
 };
-vector<std::string> DFA::types = vector<std::string>();
+vector<std::string> CodeGen::types = vector<std::string>();
+class CodeGen::State
+{
+public:
+	State(size_t accepting) : accepting(accepting) {}
+	void AddTransitions(std::vector<Transition> &&trans);
+	void InitStateNum(size_t num) { stateNum = num; }
 
-
+	bool Empty() const { return !transitions.size(); }
+	void PrintDefinition(std::ostream &out) const;
+	std::string Call(bool useCont) const;
+private:
+	struct TransGroup
+	{
+		TransGroup(const State *to, std::vector<size_t> &&charIndices) : to(to), charIndices(move(charIndices)) {}
+		const State *to;
+		std::vector<size_t> charIndices;
+	};
+	size_t accepting;
+	std::vector<TransGroup> transitions;
+	size_t stateNum;
+};
 
 class Iterator
 {
@@ -212,29 +257,26 @@ int main(int argc, char *argv[])
 			std::cin >> expression;
 			if (expression == "$")
 				break;
-			DFA::AddType(move(expression));
+			CodeGen::AddType(move(expression));
 			std::cout << "\t-> ";
 			std::cin >> expression;
 			Tree syntaxTree(expression);
 			nfas.push_back(syntaxTree.GenNfa(i));
 		}
 		DFA dfa = DFA::Optimize(NFA::Merge(move(nfas)));
-		dfa.PrintStates();
+		//dfa.PrintStates();
+
+		CodeGen codeGen(dfa);
+
 		std::ofstream out(argv[1]);
-		dfa.PrintClass(out);
+		codeGen.PrintClass(out);
 		out.close();
 		out = std::ofstream(argv[2]);
-		dfa.PrintTerminals(out);
+		codeGen.PrintTerminals(out);
 		out.close();
 		out = std::ofstream(argv[3]);
-		dfa.PrintDefinitions(out);
+		codeGen.PrintDefinitions(out);
 		out.close();
-		
-		/*
-		optimal.PrintHeaders(out);
-		out << std::endl;
-		optimal.PrintDefinitions(out);
-		out.close();*/
 	}
 	catch (char *msg)
 	{
@@ -541,44 +583,40 @@ bool DFA::isNonempty(const vector<bool> &subset)				// should be static
 			return true;
 	return false;
 }
-void DFA::AddType(std::string &&name)
+
+CodeGen::CodeGen(const DFA &dfa)
+{
+	std::vector<std::vector<size_t>> transitions;
+	transitions.reserve(dfa.Size());
+	for (size_t state = 0; state < dfa.Size(); state++)
+	{
+		size_t accepting;
+		std::vector<size_t> trans;
+		std::tie(accepting, trans) = dfa[state];
+		transitions.push_back(trans);
+		states.emplace_back(new State(accepting));
+	}
+	for (size_t state = 0; state < transitions.size(); state++)
+	{
+		std::vector<Transition> transList;
+		transList.reserve(transitions.size());
+		for (size_t charIndex = 1; charIndex < transitions[0].size(); charIndex++)
+			if (transitions[state][charIndex])
+				transList.emplace_back(states[transitions[state][charIndex] - 1].get(), charIndex);
+		states[state]->AddTransitions(move(transList));
+	}
+	states[0]->InitStateNum(1);
+	numStates = 1;
+	for (size_t state = 1; state < states.size(); state++)
+		if (!states[state]->Empty())
+			states[state]->InitStateNum(++numStates);
+}
+void CodeGen::AddType(std::string &&name)
 {
 	types.push_back(move(name));
 }
-
-void DFA::PrintStates() const
+void CodeGen::PrintClass(std::ostream &out) const
 {
-	for (size_t i = 0; i < stateInfo.size(); i++)
-	{
-		std::cout << "State " << i + 1 << ": ";
-		if (stateInfo[i].accepting)
-			std::cout << "Accepts " << DFA::types[stateInfo[i].accepting - 1];
-		std::cout << std::endl;
-		for (size_t j = 1; j < NFA::AlphabetSize(); j++)
-			if (stateInfo[i].transitions[j] != 0)
-				std::cout << "\tMove(" << i + 1 << ", " << NFA::Alphabet(j) << ") = " << stateInfo[i].transitions[j] << std::endl;
-	}
-}
-void DFA::PrintClass(std::ostream &out) const
-{
-	/*
-	out << "#include <iostream>\n"
-		"#include <istream>\n"
-		"#include <memory>\n"
-		"#include <string>\n"
-		"#include <vector>\n\n"
-		"using std::cin;\n"
-		"using std::cout;\n"
-		"using std::endl;\n"
-		"using std::move;\n"
-		"using std::istream;\n"
-		"using std::ostream;\n"
-		"using std::string;\n"
-		"using std::vector;\n"
-		"class Terminal;\n"
-		"typedef string::const_iterator Iterator;\n"
-		"typedef std::unique_ptr<Terminal> pTerminal;\n\n"
-	*/
 	out << "class Lexer\n"
 		"{\n"
 		"public:\n"
@@ -595,14 +633,14 @@ void DFA::PrintClass(std::ostream &out) const
 	for (const auto &type : types)
 		out << ", " << ToUpper(type);
 	out << " };\n\n";
-	for (size_t i = 1; i <= stateInfo.size(); i++)
+	for (size_t i = 1; i <= numStates; i++)
 		out << "\tstatic Type State_" << i << "(Iterator &it, Iterator end);\n";
 	out << "\n\tstd::istream &in;\n"
 		"\tstd::vector<pTerminal> tokens;\n"
 		"\tError err;\n"
 		"};\n";
 }
-void DFA::PrintTerminals(std::ostream &out) const
+void CodeGen::PrintTerminals(std::ostream &out) const
 {
 	out << "class Terminal : public Symbol\n"
 		"{\n"
@@ -625,7 +663,7 @@ void DFA::PrintTerminals(std::ostream &out) const
 		"\tconst std::string value;\n"
 		"};\n";
 }
-void DFA::PrintDefinitions(std::ostream &out) const
+void CodeGen::PrintDefinitions(std::ostream &out) const
 {
 	out << "bool Lexer::CreateTokens()\n"
 		"{\n"
@@ -651,67 +689,97 @@ void DFA::PrintDefinitions(std::ostream &out) const
 		"\t}\n"
 		"\treturn true;\n"
 		"}";
-	for (size_t i = 0; i < stateInfo.size(); i++)
+	states[0]->PrintDefinition(out);
+	for (size_t i = 1; i < states.size(); i++)
+		if (!states[i]->Empty())
+			states[i]->PrintDefinition(out);
+}
+void CodeGen::State::AddTransitions(std::vector<Transition> &&transList)
+{
+	std::vector<bool> marked(transList.size(), false);
+	for (size_t i = 0; i < transList.size(); i++)
 	{
-		out << "\nLexer::Type Lexer::State_" << i + 1 << "(Iterator &it, Iterator end)\n"
-			"{\n"
-			"\tif (it != end)\n"
-			"\t{\n";
-		if (stateInfo[i].accepting)
+		if (!marked[i])
 		{
-			out << "\t\tIterator cont = it;\n"
-				"\t\tType contValid = INVALID;\n"
-				"\t\tswitch (*cont++)\n"
-				"\t\t{\n";
-			size_t size = stateInfo[i].transitions.size();
-			vector<bool> marked(size, false);
-			for (size_t j = 1; j < size; j++) {
-				size_t transition = stateInfo[i].transitions[j];
-				if (!marked[j] && transition) {
-					for (size_t k = j; k < size; k++) {
-						if (stateInfo[i].transitions[k] == transition) {
-							marked[k] = true;
-							out << "\t\tcase '" << NFA::Alphabet(k) << "':\n";
-						}
-					}
-					out << "\t\t\tcontValid = State_" << transition << "(cont, end);\n"
-						"\t\t\tbreak;\n";
+			transitions.emplace_back(transList[i].to, std::vector<size_t>(1, transList[i].charIndex));
+			for (size_t j = i + 1; j < transList.size(); j++)
+			{
+				if (transList[j].to == transList[i].to)
+				{
+					marked[j] = true;
+					transitions.back().charIndices.push_back(transList[j].charIndex);
 				}
 			}
-			out << "\t\t}\n"
-				"\t\tif (contValid != INVALID) {\n"
-				"\t\t\tit = cont;\n"
-				"\t\t\treturn contValid;\n"
-				"\t\t}\n"
-				"\t}\n"
-				"\treturn " << ToUpper(types[stateInfo[i].accepting - 1]) << ";\n";
 		}
-		else
-		{
-			out << "\t\tswitch (*it++)\n"
-				"\t\t{\n";
-			size_t size = stateInfo[i].transitions.size();
-			vector<bool> marked(size, false);
-			for (size_t j = 1; j < size; j++) {
-				size_t transition = stateInfo[i].transitions[j];
-				if (!marked[j] && transition) {
-					for (size_t k = j; k < size; k++) {
-						if (stateInfo[i].transitions[k] == transition) {
-							marked[k] = true;
-							out << "\t\tcase '" << NFA::Alphabet(k) << "':\n";
-						}
-					}
-					out << "\t\t\treturn State_" << transition << "(it, end);\n";
-				}
-			}
-			out << "\t\t}\n"
-				"\t}\n"
-				"\treturn INVALID;\n";
-		}
-		out << "}";
 	}
 }
+std::string CodeGen::State::Call(bool useCont) const
+{
+	if (transitions.size() != 0)
+	{
+		std::string result = "State_";
+		result += std::to_string(stateNum);
+		if (useCont)
+			result += "(cont, end)";
+		else
+			result += "(it, end)";
+		return result;
+	}
+	return ToUpper(types[accepting - 1]);
+}
+void CodeGen::State::PrintDefinition(std::ostream &out) const
+{
+	out << "\nLexer::Type Lexer::State_" << stateNum << "(Iterator &it, Iterator end)\n"
+		"{\n"
+		"\tif (it != end)\n"
+		"\t{\n";
+	if (accepting)
+		out << "\t\tIterator cont = it;\n"
+		"\t\tType contValid = INVALID;\n"
+		"\t\tswitch (*cont++)\n";
+	else
+		out << "\t\tswitch (*it++)\n";
+	out << "\t\t{\n";
+	for (const TransGroup &transition : transitions)
+	{
+		for (size_t charIndex : transition.charIndices)
+			out << "\t\tcase '" << NFA::Alphabet(charIndex) << "':\n";
+		if (accepting)
+			out << "\t\t\tcontValid = " << transition.to->Call(true) << ";\n"
+			"\t\t\tbreak;\n";
+		else
+			out << "\t\t\treturn " << transition.to->Call(false) << ";\n";
+	}
+	if (accepting)
+		out << "\t\t}\n"
+		"\t\tif (contValid != INVALID) {\n"
+		"\t\t\tit = cont;\n"
+		"\t\t\treturn contValid;\n"
+		"\t\t}\n"
+		"\t}\n"
+		"\treturn " << ToUpper(types[accepting - 1]) << ";\n";
+	else
+		out << "\t\t}\n"
+		"\t}\n"
+		"\treturn INVALID;\n";
+	out << "}";
+}
 
+/*
+void DFA::PrintStates() const
+{
+	for (size_t i = 0; i < stateInfo.size(); i++)
+	{
+		std::cout << "State " << i + 1 << ": ";
+		if (stateInfo[i].accepting)
+			std::cout << "Accepts " << DFA::types[stateInfo[i].accepting - 1];
+		std::cout << std::endl;
+		for (size_t j = 1; j < NFA::AlphabetSize(); j++)
+			if (stateInfo[i].transitions[j] != 0)
+				std::cout << "\tMove(" << i + 1 << ", " << NFA::Alphabet(j) << ") = " << stateInfo[i].transitions[j] << std::endl;
+	}
+}
+*/
 Iterator &Iterator::operator++()
 {
 	if (*it == '\\')
