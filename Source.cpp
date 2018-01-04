@@ -84,11 +84,9 @@ public:
 	DFA &operator=(const DFA &) = delete;
 	DFA &operator=(DFA &&) = default;
 	static DFA Optimize(const DFA &dfa);
-	
-	//void PrintStates() const;
 
 	size_t Size() const { return stateInfo.size(); }
-	std::tuple<size_t, std::vector<size_t>> operator[](size_t state) const { return { stateInfo[state].accepting, stateInfo[state].transitions }; }
+	std::tuple<size_t, std::vector<size_t>> operator[](size_t state) const { return { stateInfo[state].accepting, move(stateInfo[state].transitions) }; }
 private:
 	DFA() = default;
 	static bool isNonempty(const std::vector<bool> &subset);
@@ -112,6 +110,7 @@ public:
 	CodeGen &operator=(CodeGen &&) = delete;
 
 	static void AddType(std::string &&name);
+	void PrintStates(std::ostream &out) const;
 	void PrintClass(std::ostream &out) const;
 	void PrintTerminals(std::ostream &out) const;
 	void PrintDefinitions(std::ostream &out) const;
@@ -133,11 +132,12 @@ vector<std::string> CodeGen::types = vector<std::string>();
 class CodeGen::State
 {
 public:
-	State(size_t accepting) : accepting(accepting) {}
+	State(size_t state, size_t accepting) : oldState(state), accepting(accepting) {}
 	void AddTransitions(std::vector<Transition> &&trans);
-	void InitStateNum(size_t num) { stateNum = num; }
+	void InitStateNum(size_t num) { newState = num; }
 
 	bool Empty() const { return !transitions.size(); }
+	void PrintTransitions(std::ostream &os) const;
 	void PrintDefinition(std::ostream &out) const;
 	std::string Call(bool useCont) const;
 private:
@@ -147,9 +147,10 @@ private:
 		const State *to;
 		std::vector<size_t> charIndices;
 	};
+	size_t oldState;
+	size_t newState;
 	size_t accepting;
 	std::vector<TransGroup> transitions;
-	size_t stateNum;
 };
 
 class Iterator
@@ -263,11 +264,8 @@ int main(int argc, char *argv[])
 			Tree syntaxTree(expression);
 			nfas.push_back(syntaxTree.GenNfa(i));
 		}
-		DFA dfa = DFA::Optimize(NFA::Merge(move(nfas)));
-		//dfa.PrintStates();
-
-		CodeGen codeGen(dfa);
-
+		CodeGen codeGen(DFA::Optimize(NFA::Merge(move(nfas))));
+		codeGen.PrintStates(std::cout);
 		std::ofstream out(argv[1]);
 		codeGen.PrintClass(out);
 		out.close();
@@ -590,11 +588,9 @@ CodeGen::CodeGen(const DFA &dfa)
 	transitions.reserve(dfa.Size());
 	for (size_t state = 0; state < dfa.Size(); state++)
 	{
-		size_t accepting;
-		std::vector<size_t> trans;
-		std::tie(accepting, trans) = dfa[state];
+		auto [accepting, trans] = dfa[state];
 		transitions.push_back(trans);
-		states.emplace_back(new State(accepting));
+		states.emplace_back(new State(state + 1, accepting));
 	}
 	for (size_t state = 0; state < transitions.size(); state++)
 	{
@@ -614,6 +610,11 @@ CodeGen::CodeGen(const DFA &dfa)
 void CodeGen::AddType(std::string &&name)
 {
 	types.push_back(move(name));
+}
+void CodeGen::PrintStates(std::ostream &os) const
+{
+	for (size_t i = 0; i < states.size(); i++)
+		states[i]->PrintTransitions(os);
 }
 void CodeGen::PrintClass(std::ostream &out) const
 {
@@ -718,7 +719,7 @@ std::string CodeGen::State::Call(bool useCont) const
 	if (transitions.size() != 0)
 	{
 		std::string result = "State_";
-		result += std::to_string(stateNum);
+		result += std::to_string(newState);
 		if (useCont)
 			result += "(cont, end)";
 		else
@@ -727,9 +728,29 @@ std::string CodeGen::State::Call(bool useCont) const
 	}
 	return ToUpper(types[accepting - 1]);
 }
+void CodeGen::State::PrintTransitions(std::ostream &os) const
+{
+	os << "State " << oldState << ':';
+	if (accepting)
+		os << " Accepts " << types[accepting - 1];
+	os << '\n';
+	for (const TransGroup &transGroup : transitions)
+	{
+		os << "\t{ ";
+		size_t i = 0;
+		while (true)
+		{
+			os << NFA::Alphabet(transGroup.charIndices[i]);
+			if (++i == transGroup.charIndices.size())
+				break;
+			os << ", ";
+		}
+		os << " } -> " << transGroup.to->oldState << '\n';
+	}
+}
 void CodeGen::State::PrintDefinition(std::ostream &out) const
 {
-	out << "\nLexer::Type Lexer::State_" << stateNum << "(Iterator &it, Iterator end)\n"
+	out << "\nLexer::Type Lexer::State_" << newState << "(Iterator &it, Iterator end)\n"
 		"{\n"
 		"\tif (it != end)\n"
 		"\t{\n";
@@ -765,21 +786,6 @@ void CodeGen::State::PrintDefinition(std::ostream &out) const
 	out << "}";
 }
 
-/*
-void DFA::PrintStates() const
-{
-	for (size_t i = 0; i < stateInfo.size(); i++)
-	{
-		std::cout << "State " << i + 1 << ": ";
-		if (stateInfo[i].accepting)
-			std::cout << "Accepts " << DFA::types[stateInfo[i].accepting - 1];
-		std::cout << std::endl;
-		for (size_t j = 1; j < NFA::AlphabetSize(); j++)
-			if (stateInfo[i].transitions[j] != 0)
-				std::cout << "\tMove(" << i + 1 << ", " << NFA::Alphabet(j) << ") = " << stateInfo[i].transitions[j] << std::endl;
-	}
-}
-*/
 Iterator &Iterator::operator++()
 {
 	if (*it == '\\')
