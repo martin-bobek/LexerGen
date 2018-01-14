@@ -245,7 +245,7 @@ int main(int argc, char *argv[])
 	//std::chrono::time_point<std::chrono::high_resolution_clock> t0;
 	try 
 	{
-		if (argc < 4)
+		if (argc != 4)
 		{
 			std::cerr << "Incorrect number of parameters!" << std::endl;
 			return 0;
@@ -267,14 +267,24 @@ int main(int argc, char *argv[])
 		CodeGen codeGen(DFA::Optimize(NFA::Merge(move(nfas))));
 		codeGen.PrintStates(std::cout);
 		std::ofstream out(argv[1]);
+		if (out.fail())
+		{
+			std::cerr << "Failed to open file 1!" << std::endl;
+			return 1;
+		}
 		codeGen.PrintClass(out);
-		out.close();
 		out = std::ofstream(argv[2]);
+		if (out.fail())
+		{
+			std::cerr << "Failed to open file 2!" << std::endl;
+		}
 		codeGen.PrintTerminals(out);
-		out.close();
 		out = std::ofstream(argv[3]);
+		if (out.fail())
+		{
+			std::cerr << "Failed to open file 3!" << std::endl;
+		}
 		codeGen.PrintDefinitions(out);
-		out.close();
 	}
 	catch (char *msg)
 	{
@@ -666,7 +676,8 @@ void CodeGen::PrintTerminals(std::ostream &out) const
 }
 void CodeGen::PrintDefinitions(std::ostream &out) const
 {
-	out << "bool Lexer::CreateTokens()\n"
+	out << "#include \"SyntaxTree.h\"\n\n"
+		"bool Lexer::CreateTokens()\n"
 		"{\n"
 		"\tstd::string word;\n"
 		"\twhile (in >> word)\n"
