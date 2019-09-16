@@ -751,7 +751,11 @@ void CodeGen::State::PrintTransitions(std::ostream &os) const
         size_t i = 0;
         while (true)
         {
-            os << NFA::Alphabet(transGroup.charIndices[i]);
+            char c = NFA::Alphabet(transGroup.charIndices[i]);
+            if (c == '\n')
+                os << "\\n";
+            else
+                os << c;
             if (++i == transGroup.charIndices.size())
                 break;
             os << ", ";
@@ -774,8 +778,17 @@ void CodeGen::State::PrintDefinition(std::ostream &out) const
     out << "\t\t{\n";
     for (const TransGroup &transition : transitions)
     {
-        for (size_t charIndex : transition.charIndices)
-            out << "\t\tcase '" << NFA::Alphabet(charIndex) << "':\n";
+        for (size_t charIndex : transition.charIndices) {
+            out << "        case '";
+
+            char c = NFA::Alphabet(charIndex);
+            if (c == '\n') {
+                out << '\\';
+                c = 'n';
+            }
+
+            out << c << "':\n";
+        }
         if (accepting)
             out << "\t\t\tcontValid = " << transition.to->Call(true) << ";\n"
             "\t\t\tbreak;\n";
@@ -827,6 +840,8 @@ char Iterator::C() const
     {
         if (*(it + 1) == '$')
             return '\0';
+        if (*(it + 1) == 'n')
+            return '\n';
         return *(it + 1);
     }
     return *it;
