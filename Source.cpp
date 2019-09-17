@@ -259,7 +259,7 @@ int main(int argc, char *argv[])
             if (expression == "$")
                 break;
             CodeGen::AddType(move(expression));
-            std::cout << "\t-> ";
+            std::cout << "    -> ";
             std::cin >> expression;
             Tree syntaxTree(expression);
             nfas.push_back(syntaxTree.GenNfa(i));
@@ -631,24 +631,24 @@ void CodeGen::PrintClass(std::ostream &out) const
     out << "class Lexer\n"
         "{\n"
         "public:\n"
-        "\tstruct Error\n"
-        "\t{\n"
-        "\t\tstd::string Token;\n"
-        "\t};\n\n"
-        "\tLexer(std::istream &in) : in(in) {}\n"
-        "\tbool CreateTokens();\n"
-        "\tstd::vector<pTerminal> GetTokens() { return move(tokens); };\n"
-        "\tError GetErrorReport() { return move(err); }\n"
+        "    struct Error\n"
+        "    {\n"
+        "        std::string Token;\n"
+        "    };\n\n"
+        "    Lexer(std::istream &in) : in(in) {}\n"
+        "    bool CreateTokens();\n"
+        "    std::vector<pTerminal> GetTokens() { return move(tokens); };\n"
+        "    Error GetErrorReport() { return move(err); }\n"
         "private:\n"
-        "\tenum Type { INVALID";
+        "    enum Type { INVALID";
     for (const auto &type : types)
         out << ", " << ToUpper(type);
     out << " };\n\n";
     for (size_t i = 1; i <= numStates; i++)
-        out << "\tstatic Type State_" << i << "(Iterator &it, Iterator end);\n";
-    out << "\n\tstd::istream &in;\n"
-        "\tstd::vector<pTerminal> tokens;\n"
-        "\tError err;\n"
+        out << "    static Type State_" << i << "(Iterator &it, Iterator end);\n";
+    out << "\n    std::istream &in;\n"
+        "    std::vector<pTerminal> tokens;\n"
+        "    Error err;\n"
         "};\n";
 }
 void CodeGen::PrintTerminals(std::ostream &out) const
@@ -656,22 +656,22 @@ void CodeGen::PrintTerminals(std::ostream &out) const
     out << "class Terminal : public Symbol\n"
         "{\n"
         "public:\n"
-        "\tvirtual ~Terminal() = 0;\n"
-        "\tvirtual bool Process(Stack &stack, SymStack &symStack, Parser::Error &err) const = 0;\n"
-        "\tfriend std::ostream &operator<<(std::ostream &os, const Terminal &term) { return term.print(os); }\n"
+        "    virtual ~Terminal() = 0;\n"
+        "    virtual bool Process(Stack &stack, SymStack &symStack, Parser::Error &err) const = 0;\n"
+        "    friend std::ostream &operator<<(std::ostream &os, const Terminal &term) { return term.print(os); }\n"
         "private:\n"
-        "\tvirtual std::ostream &print(std::ostream &os) const = 0;\n"
+        "    virtual std::ostream &print(std::ostream &os) const = 0;\n"
         "};\n"
         "Terminal::~Terminal() = default;\n";
     for (const auto &type : types)
         out << "class " << type << " : public Terminal\n"
         "{\n"
         "public:\n"
-        "\t" << type << "(std::string &&value) : value(move(value)) {}\n"
-        "\tbool Process(Stack &stack, SymStack &symStack, Parser::Error &err) const;\n"
+        "    " << type << "(std::string &&value) : value(move(value)) {}\n"
+        "    bool Process(Stack &stack, SymStack &symStack, Parser::Error &err) const;\n"
         "private:\n"
-        "\tstd::ostream &print(std::ostream &os) const { return os << \"" << ToUpper(type) << "[\" << value << ']'; }\n"
-        "\tconst std::string value;\n"
+        "    std::ostream &print(std::ostream &os) const { return os << \"" << ToUpper(type) << "[\" << value << ']'; }\n"
+        "    const std::string value;\n"
         "};\n";
 }
 void CodeGen::PrintDefinitions(std::ostream &out) const
@@ -679,27 +679,27 @@ void CodeGen::PrintDefinitions(std::ostream &out) const
     out << "#include \"SyntaxTree.h\"\n\n"
         "bool Lexer::CreateTokens()\n"
         "{\n"
-        "\tstd::string word;\n"
-        "\twhile (in >> word)\n"
-        "\t{\n"
-        "\t\tIterator begin = word.begin(), it = begin, end = word.end();\n"
-        "\t\tdo\n"
-        "\t\t{\n"
-        "\t\t\tType type = State_1(it, end);\n"
-        "\t\t\tswitch (type)\n"
-        "\t\t\t{\n";
+        "    std::string word;\n"
+        "    while (in >> word)\n"
+        "    {\n"
+        "        Iterator begin = word.begin(), it = begin, end = word.end();\n"
+        "        do\n"
+        "        {\n"
+        "            Type type = State_1(it, end);\n"
+        "            switch (type)\n"
+        "            {\n";
     for (const auto &type : types)
-        out << "\t\t\tcase " << ToUpper(type) << ":\n"
-        "\t\t\t\ttokens.emplace_back(new " << type << "(std::string(begin, it)));\n"
-        "\t\t\t\tbreak;\n";
-    out << "\t\t\tdefault:\n"
-        "\t\t\t\terr = { std::string(begin, end) };\n"
-        "\t\t\t\treturn false;\n"
-        "\t\t\t}\n"
-        "\t\t\tbegin = it;\n"
-        "\t\t} while (it != end);\n"
-        "\t}\n"
-        "\treturn true;\n"
+        out << "            case " << ToUpper(type) << ":\n"
+        "                tokens.emplace_back(new " << type << "(std::string(begin, it)));\n"
+        "                break;\n";
+    out << "            default:\n"
+        "                err = { std::string(begin, end) };\n"
+        "                return false;\n"
+        "            }\n"
+        "            begin = it;\n"
+        "        } while (it != end);\n"
+        "    }\n"
+        "    return true;\n"
         "}";
     states[0]->PrintDefinition(out);
     for (size_t i = 1; i < states.size(); i++)
@@ -747,7 +747,7 @@ void CodeGen::State::PrintTransitions(std::ostream &os) const
     os << '\n';
     for (const TransGroup &transGroup : transitions)
     {
-        os << "\t{ ";
+        os << "    { ";
         size_t i = 0;
         while (true)
         {
@@ -767,15 +767,15 @@ void CodeGen::State::PrintDefinition(std::ostream &out) const
 {
     out << "\nLexer::Type Lexer::State_" << newState << "(Iterator &it, Iterator end)\n"
         "{\n"
-        "\tif (it != end)\n"
-        "\t{\n";
+        "    if (it != end)\n"
+        "    {\n";
     if (accepting)
-        out << "\t\tIterator cont = it;\n"
-        "\t\tType contValid = INVALID;\n"
-        "\t\tswitch (*cont++)\n";
+        out << "        Iterator cont = it;\n"
+        "        Type contValid = INVALID;\n"
+        "        switch (*cont++)\n";
     else
-        out << "\t\tswitch (*it++)\n";
-    out << "\t\t{\n";
+        out << "        switch (*it++)\n";
+    out << "        {\n";
     for (const TransGroup &transition : transitions)
     {
         for (size_t charIndex : transition.charIndices) {
@@ -790,23 +790,23 @@ void CodeGen::State::PrintDefinition(std::ostream &out) const
             out << c << "':\n";
         }
         if (accepting)
-            out << "\t\t\tcontValid = " << transition.to->Call(true) << ";\n"
-            "\t\t\tbreak;\n";
+            out << "            contValid = " << transition.to->Call(true) << ";\n"
+            "            break;\n";
         else
-            out << "\t\t\treturn " << transition.to->Call(false) << ";\n";
+            out << "            return " << transition.to->Call(false) << ";\n";
     }
     if (accepting)
-        out << "\t\t}\n"
-        "\t\tif (contValid != INVALID) {\n"
-        "\t\t\tit = cont;\n"
-        "\t\t\treturn contValid;\n"
-        "\t\t}\n"
-        "\t}\n"
-        "\treturn " << ToUpper(types[accepting - 1]) << ";\n";
+        out << "        }\n"
+        "        if (contValid != INVALID) {\n"
+        "            it = cont;\n"
+        "            return contValid;\n"
+        "        }\n"
+        "    }\n"
+        "    return " << ToUpper(types[accepting - 1]) << ";\n";
     else
-        out << "\t\t}\n"
-        "\t}\n"
-        "\treturn INVALID;\n";
+        out << "        }\n"
+        "    }\n"
+        "    return INVALID;\n";
     out << "}";
 }
 
