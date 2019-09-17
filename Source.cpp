@@ -628,17 +628,17 @@ void CodeGen::PrintStates(std::ostream &os) const
 }
 void CodeGen::PrintClass(std::ostream &out) const
 {
-    out << "class Lexer\n"
-        "{\n"
+    out << "class Lexer {\n"
         "public:\n"
-        "    struct Error\n"
-        "    {\n"
+        "    struct Error {\n"
         "        std::string Token;\n"
         "    };\n\n"
         "    Lexer(std::istream &in) : in(in) {}\n"
         "    bool CreateTokens();\n"
-        "    std::vector<pTerminal> GetTokens() { return move(tokens); };\n"
-        "    Error GetErrorReport() { return move(err); }\n"
+        "    std::vector<pTerminal> GetTokens() { return std::move(tokens); };\n"
+        "    Error GetErrorReport() { return std::move(err); }\n\n"
+        "    Lexer(Lexer &&) = default;\n"
+        "    Lexer &operator=(Lexer &&) = default;\n"
         "private:\n"
         "    enum Type { INVALID";
     for (const auto &type : types)
@@ -646,15 +646,14 @@ void CodeGen::PrintClass(std::ostream &out) const
     out << " };\n\n";
     for (size_t i = 1; i <= numStates; i++)
         out << "    static Type State_" << i << "(Iterator &it, Iterator end);\n";
-    out << "\n    std::istream &in;\n"
+    out << "\n    std::reference_wrapper<std::istream> in;\n"
         "    std::vector<pTerminal> tokens;\n"
         "    Error err;\n"
         "};\n";
 }
 void CodeGen::PrintTerminals(std::ostream &out) const
 {
-    out << "class Terminal : public Symbol\n"
-        "{\n"
+    out << "class Terminal : public Symbol {\n"
         "public:\n"
         "    virtual ~Terminal() = 0;\n"
         "    virtual bool Process(Stack &stack, SymStack &symStack, Parser::Error &err) const = 0;\n"
@@ -662,32 +661,27 @@ void CodeGen::PrintTerminals(std::ostream &out) const
         "private:\n"
         "    virtual std::ostream &print(std::ostream &os) const = 0;\n"
         "};\n"
-        "Terminal::~Terminal() = default;\n";
+        "inline Terminal::~Terminal() = default;\n";
     for (const auto &type : types)
-        out << "class " << type << " : public Terminal\n"
-        "{\n"
+        out << "class " << type << " : public Terminal {\n"
         "public:\n"
-        "    " << type << "(std::string &&value) : value(move(value)) {}\n"
+        "    " << type << "(std::string value) : value(std::move(value)) {}\n"
         "    bool Process(Stack &stack, SymStack &symStack, Parser::Error &err) const;\n"
         "private:\n"
-        "    std::ostream &print(std::ostream &os) const { return os << \"" << ToUpper(type) << "[\" << value << ']'; }\n"
+        "    std::ostream &print(std::ostream &os) const { return os << \"" << ToUpper(type) << "[\" << value << ']'; }\n\n"
         "    const std::string value;\n"
         "};\n";
 }
 void CodeGen::PrintDefinitions(std::ostream &out) const
 {
     out << "#include \"SyntaxTree.h\"\n\n"
-        "bool Lexer::CreateTokens()\n"
-        "{\n"
-        "    std::string word;\n"
-        "    while (in >> word)\n"
-        "    {\n"
-        "        Iterator begin = word.begin(), it = begin, end = word.end();\n"
-        "        do\n"
-        "        {\n"
-        "            Type type = State_1(it, end);\n"
-        "            switch (type)\n"
-        "            {\n";
+        "bool Lexer::CreateTokens() {\n"
+        "    std::string word;\n\n"
+        "    while (in >> word) {\n"
+        "        Iterator begin = word.begin(), it = begin, end = word.end();\n\n"
+        "        do {\n"
+        "            Type type = State_1(it, end);\n\n"
+        "            switch (type) {\n";
     for (const auto &type : types)
         out << "            case " << ToUpper(type) << ":\n"
         "                tokens.emplace_back(new " << type << "(std::string(begin, it)));\n"
@@ -695,12 +689,12 @@ void CodeGen::PrintDefinitions(std::ostream &out) const
     out << "            default:\n"
         "                err = { std::string(begin, end) };\n"
         "                return false;\n"
-        "            }\n"
+        "            }\n\n"
         "            begin = it;\n"
         "        } while (it != end);\n"
-        "    }\n"
+        "    }\n\n"
         "    return true;\n"
-        "}";
+        "}\n";
     states[0]->PrintDefinition(out);
     for (size_t i = 1; i < states.size(); i++)
         if (!states[i]->Empty())
@@ -765,17 +759,14 @@ void CodeGen::State::PrintTransitions(std::ostream &os) const
 }
 void CodeGen::State::PrintDefinition(std::ostream &out) const
 {
-    out << "\nLexer::Type Lexer::State_" << newState << "(Iterator &it, Iterator end)\n"
-        "{\n"
-        "    if (it != end)\n"
-        "    {\n";
+    out << "Lexer::Type Lexer::State_" << newState << "(Iterator &it, Iterator end) {\n"
+        "    if (it != end) {\n";
     if (accepting)
         out << "        Iterator cont = it;\n"
-        "        Type contValid = INVALID;\n"
-        "        switch (*cont++)\n";
+        "        Type contValid = INVALID;\n\n"
+        "        switch (*cont++) {\n";
     else
-        out << "        switch (*it++)\n";
-    out << "        {\n";
+        out << "        switch (*it++) {\n";
     for (const TransGroup &transition : transitions)
     {
         for (size_t charIndex : transition.charIndices) {
@@ -796,18 +787,18 @@ void CodeGen::State::PrintDefinition(std::ostream &out) const
             out << "            return " << transition.to->Call(false) << ";\n";
     }
     if (accepting)
-        out << "        }\n"
+        out << "        }\n\n"
         "        if (contValid != INVALID) {\n"
         "            it = cont;\n"
         "            return contValid;\n"
         "        }\n"
-        "    }\n"
+        "    }\n\n"
         "    return " << ToUpper(types[accepting - 1]) << ";\n";
     else
         out << "        }\n"
-        "    }\n"
+        "    }\n\n"
         "    return INVALID;\n";
-    out << "}";
+    out << "}\n";
 }
 
 Iterator &Iterator::operator++()
