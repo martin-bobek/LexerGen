@@ -748,6 +748,10 @@ void CodeGen::State::PrintTransitions(std::ostream &os) const
             char c = NFA::Alphabet(transGroup.charIndices[i]);
             if (c == '\n')
                 os << "\\n";
+            else if (c == ' ')
+                os << "\\s";
+            else if (c == '\t')
+                os << "\\t";
             else
                 os << c;
             if (++i == transGroup.charIndices.size())
@@ -773,12 +777,14 @@ void CodeGen::State::PrintDefinition(std::ostream &out) const
             out << "        case '";
 
             char c = NFA::Alphabet(charIndex);
-            if (c == '\n') {
-                out << '\\';
-                c = 'n';
-            }
+            if (c == '\n')
+                out << "\\n";
+            else if (c == '\t')
+                out << "\\t";
+            else
+                out << c;
 
-            out << c << "':\n";
+            out << "':\n";
         }
         if (accepting)
             out << "            contValid = " << transition.to->Call(true) << ";\n"
@@ -829,10 +835,15 @@ char Iterator::C() const
 {
     if (*it == '\\')
     {
-        if (*(it + 1) == '$')
+        char c = *(it + 1);
+        if (c == '$')
             return '\0';
-        if (*(it + 1) == 'n')
+        if (c == 'n')
             return '\n';
+        if (c == 's')
+            return ' ';
+        if (c == 't')
+            return '\t';
         return *(it + 1);
     }
     return *it;
