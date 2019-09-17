@@ -633,7 +633,7 @@ void CodeGen::PrintClass(std::ostream &out) const
         "    struct Error {\n"
         "        std::string Token;\n"
         "    };\n\n"
-        "    Lexer(std::istream &in) : in(in) {}\n"
+        "    Lexer(const std::string &in) : in(in) {}\n"
         "    bool CreateTokens();\n"
         "    std::vector<pTerminal> GetTokens() { return std::move(tokens); };\n"
         "    Error GetErrorReport() { return std::move(err); }\n\n"
@@ -646,7 +646,7 @@ void CodeGen::PrintClass(std::ostream &out) const
     out << " };\n\n";
     for (size_t i = 1; i <= numStates; i++)
         out << "    static Type State_" << i << "(Iterator &it, Iterator end);\n";
-    out << "\n    std::reference_wrapper<std::istream> in;\n"
+    out << "\n    std::reference_wrapper<const std::string> in;\n"
         "    std::vector<pTerminal> tokens;\n"
         "    Error err;\n"
         "};\n";
@@ -676,23 +676,20 @@ void CodeGen::PrintDefinitions(std::ostream &out) const
 {
     out << "#include \"SyntaxTree.h\"\n\n"
         "bool Lexer::CreateTokens() {\n"
-        "    std::string word;\n\n"
-        "    while (in >> word) {\n"
-        "        Iterator begin = word.begin(), it = begin, end = word.end();\n\n"
-        "        do {\n"
-        "            Type type = State_1(it, end);\n\n"
-        "            switch (type) {\n";
+        "    Iterator begin = in.begin(), it = begin, end = in.end();\n\n"
+        "    do {\n"
+        "        Type type = State_1(it, end);\n\n"
+        "        switch (type) {\n";
     for (const auto &type : types)
-        out << "            case " << ToUpper(type) << ":\n"
-        "                tokens.emplace_back(new " << type << "(std::string(begin, it)));\n"
-        "                break;\n";
-    out << "            default:\n"
-        "                err = { std::string(begin, end) };\n"
-        "                return false;\n"
-        "            }\n\n"
-        "            begin = it;\n"
-        "        } while (it != end);\n"
-        "    }\n\n"
+        out << "        case " << ToUpper(type) << ":\n"
+        "            tokens.emplace_back(new " << type << "(std::string(begin, it)));\n"
+        "            break;\n";
+    out << "        default:\n"
+        "            err = { std::string(begin, end) };\n"
+        "            return false;\n"
+        "        }\n\n"
+        "        begin = it;\n"
+        "    } while (it != end);\n\n"
         "    return true;\n"
         "}\n";
     states[0]->PrintDefinition(out);
