@@ -677,7 +677,7 @@ void CodeGen::PrintDefinitions(std::ostream &out) const
     out << "#include \"SyntaxTree.h\"\n\n"
         "bool Lexer::CreateTokens() {\n"
         "    Iterator begin = in->begin(), it = begin, end = in->end();\n\n"
-        "    do {\n"
+        "    while (it != end) {\n"
         "        Type type = State_1(it, end);\n\n"
         "        switch (type) {\n";
     for (const auto &type : types)
@@ -689,7 +689,7 @@ void CodeGen::PrintDefinitions(std::ostream &out) const
         "            return false;\n"
         "        }\n\n"
         "        begin = it;\n"
-        "    } while (it != end);\n\n"
+        "    }\n\n"
         "    return true;\n"
         "}\n";
     states[0]->PrintDefinition(out);
