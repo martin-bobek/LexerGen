@@ -633,7 +633,7 @@ void CodeGen::PrintClass(std::ostream &out) const
         "    struct Error {\n"
         "        std::string Token;\n"
         "    };\n\n"
-        "    Lexer(const std::string &in) : in(in) {}\n"
+        "    Lexer(const std::string &in) : in(&in) {}\n"
         "    bool CreateTokens();\n"
         "    std::vector<pTerminal> GetTokens() { return std::move(tokens); };\n"
         "    Error GetErrorReport() { return std::move(err); }\n\n"
@@ -646,7 +646,7 @@ void CodeGen::PrintClass(std::ostream &out) const
     out << " };\n\n";
     for (size_t i = 1; i <= numStates; i++)
         out << "    static Type State_" << i << "(Iterator &it, Iterator end);\n";
-    out << "\n    std::reference_wrapper<const std::string> in;\n"
+    out << "\n    const std::string *in;\n"
         "    std::vector<pTerminal> tokens;\n"
         "    Error err;\n"
         "};\n";
@@ -676,7 +676,7 @@ void CodeGen::PrintDefinitions(std::ostream &out) const
 {
     out << "#include \"SyntaxTree.h\"\n\n"
         "bool Lexer::CreateTokens() {\n"
-        "    Iterator begin = in.begin(), it = begin, end = in.end();\n\n"
+        "    Iterator begin = in->begin(), it = begin, end = in->end();\n\n"
         "    do {\n"
         "        Type type = State_1(it, end);\n\n"
         "        switch (type) {\n";
