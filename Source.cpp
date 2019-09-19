@@ -668,7 +668,7 @@ void CodeGen::PrintTerminals(std::ostream &out) const
         "    " << type << "(std::string value) : value(std::move(value)) {}\n"
         //"    bool Process(Stack &stack, SymStack &symStack, Parser::Error &err) const;\n"
         "private:\n"
-        "    std::ostream &print(std::ostream &os) const { return os << \"" << ToUpper(type) << "[\" << value << ']'; }\n\n"
+        "    std::ostream &print(std::ostream &os) const { return os << \"\\033[31m" << ToUpper(type) << "[\\033[0m\" << value << \"\\033[31m]\\033[0m\"; }\n\n"
         "    const std::string value;\n"
         "};\n";
 }
