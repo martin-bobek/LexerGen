@@ -628,7 +628,11 @@ void CodeGen::PrintStates(std::ostream &os) const
 }
 void CodeGen::PrintClass(std::ostream &out) const
 {
-    out << "class Lexer {\n"
+    out << "#ifndef LEXER_H__\n"
+        "#define LEXER_H__\n\n"
+        "#include <vector>\n"
+        "#include \"Terminals.h\"\n\n"
+        "class Lexer {\n"
         "public:\n"
         "    struct Error {\n"
         "        std::string Token;\n"
@@ -649,32 +653,57 @@ void CodeGen::PrintClass(std::ostream &out) const
     out << "\n    const std::string *in;\n"
         "    std::vector<pTerminal> tokens;\n"
         "    Error err;\n"
-        "};\n";
+        "};\n\n"
+        "#endif\n";
 }
 void CodeGen::PrintTerminals(std::ostream &out) const
 {
-    out << "class Terminal : public Symbol {\n"
+    out <<
+        "#ifndef TERMINALS_H__\n"
+        "#define TERMINALS_H__\n\n"
+
+        "#include <memory>\n"
+        "#include <ostream>\n"
+        "#include <string>\n\n"
+
+        "class Symbol;\n"
+        "class Terminal;\n\n"
+
+        "using pSymbol = std::unique_ptr<Symbol>;\n"
+        "using pTerminal = std::unique_ptr<Terminal>;\n"
+        "using Iterator = std::string::const_iterator;\n\n"
+
+        "class Symbol {\n"
+        "public:\n"
+        "    virtual ~Symbol() = 0;\n"
+        "};\n"
+        "inline Symbol::~Symbol() = default;\n\n"
+
+        "class Terminal : public Symbol {\n"
         "public:\n"
         "    virtual ~Terminal() = 0;\n"
-        //"    virtual bool Process(Stack &stack, SymStack &symStack, Parser::Error &err) const = 0;\n"
         "    friend std::ostream &operator<<(std::ostream &os, const Terminal &term) { return term.print(os); }\n"
         "private:\n"
         "    virtual std::ostream &print(std::ostream &os) const = 0;\n"
         "};\n"
-        "inline Terminal::~Terminal() = default;\n";
-    for (const auto &type : types)
-        out << "class " << type << " : public Terminal {\n"
-        "public:\n"
-        "    " << type << "(std::string value) : value(std::move(value)) {}\n"
-        //"    bool Process(Stack &stack, SymStack &symStack, Parser::Error &err) const;\n"
-        "private:\n"
-        "    std::ostream &print(std::ostream &os) const { return os << \"\\033[31m" << ToUpper(type) << "[\\033[0m\" << value << \"\\033[31m]\\033[0m\"; }\n\n"
-        "    const std::string value;\n"
-        "};\n";
+        "inline Terminal::~Terminal() = default;\n\n";
+
+    for (const auto &type : types) {
+        out <<
+            "class " << type << " : public Terminal {\n"
+            "public:\n"
+            "    " << type << "(std::string value) : value(std::move(value)) {}\n"
+            "private:\n"
+            "    std::ostream &print(std::ostream &os) const { return os << \"\\033[31m" << ToUpper(type) << "[\\033[0m\" << value << \"\\033[31m]\\033[0m\"; }\n\n"
+            "    const std::string value;\n"
+            "};\n";
+    }
+
+    out << "\n#endif\n";
 }
 void CodeGen::PrintDefinitions(std::ostream &out) const
 {
-    out << "#include \"SyntaxTree.h\"\n\n"
+    out << "#include \"Lexer.h\"\n\n"
         "bool Lexer::CreateTokens() {\n"
         "    Iterator begin = in->begin(), it = begin, end = in->end();\n\n"
         "    while (it != end) {\n"
