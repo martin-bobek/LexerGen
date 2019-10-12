@@ -628,32 +628,45 @@ void CodeGen::PrintStates(std::ostream &os) const
 }
 void CodeGen::PrintClass(std::ostream &out) const
 {
-    out << "#ifndef LEXER_H__\n"
+    out <<
+        "#ifndef LEXER_H__\n"
         "#define LEXER_H__\n\n"
+
+        "#include <memory>\n"
+        "#include <string>\n"
         "#include <vector>\n"
         "#include \"Terminals.h\"\n\n"
+
         "class Lexer {\n"
         "public:\n"
         "    struct Error {\n"
         "        std::string Token;\n"
         "    };\n\n"
+
         "    Lexer(const std::string &in) : in(&in) {}\n"
         "    bool CreateTokens();\n"
         "    std::vector<pTerminal> GetTokens() { return std::move(tokens); };\n"
         "    Error GetErrorReport() { return std::move(err); }\n\n"
+
         "    Lexer(Lexer &&) = default;\n"
         "    Lexer &operator=(Lexer &&) = default;\n"
         "private:\n"
+        "    using Iterator = std::string::const_iterator;\n"
         "    enum Type { INVALID";
+
     for (const auto &type : types)
         out << ", " << ToUpper(type);
     out << " };\n\n";
+
     for (size_t i = 1; i <= numStates; i++)
         out << "    static Type State_" << i << "(Iterator &it, Iterator end);\n";
-    out << "\n    const std::string *in;\n"
+
+    out <<
+      "\n    const std::string *in;\n"
         "    std::vector<pTerminal> tokens;\n"
         "    Error err;\n"
         "};\n\n"
+
         "#endif\n";
 }
 void CodeGen::PrintTerminals(std::ostream &out) const
