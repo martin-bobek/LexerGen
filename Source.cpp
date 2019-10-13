@@ -8,6 +8,7 @@
 #include <cctype>
 #include <tuple>
 
+using namespace std::literals::string_literals;
 using std::move;
 using std::vector;
 
@@ -245,44 +246,41 @@ void ErrorExit(const std::string &message);
 int main(int argc, char *argv[])
 {
     if (argc != 4)
-    {
-        std::cerr << "Incorrect number of parameters!" << std::endl;
-        return 0;
-    }
+        ErrorExit("Incorrect number of parameters!");
+
     vector<NFA> nfas;
-    for (size_t i = 1;; i++)
-    {
+    for (size_t i = 1;; i++) {
         std::string expression;
         std::cout << "Regular Expression: ";
         std::cin >> expression;
+
         if (expression == "$")
             break;
         CodeGen::AddType(move(expression));
+
         std::cout << "    -> ";
         std::cin >> expression;
+
         Tree syntaxTree(expression);
         nfas.push_back(syntaxTree.GenNfa(i));
     }
+
     CodeGen codeGen(DFA::Optimize(NFA::Merge(move(nfas))));
     codeGen.PrintStates(std::cout);
+
     std::ofstream out(argv[1]);
     if (out.fail())
-    {
-        std::cerr << "Failed to open file 1!" << std::endl;
-        return 1;
-    }
+        ErrorExit("Failed to open file: "s + argv[1]);
     codeGen.PrintClass(out);
+
     out = std::ofstream(argv[2]);
     if (out.fail())
-    {
-        std::cerr << "Failed to open file 2!" << std::endl;
-    }
+        ErrorExit("Failed to open file: "s + argv[2]);
     codeGen.PrintTerminals(out);
+
     out = std::ofstream(argv[3]);
     if (out.fail())
-    {
-        std::cerr << "Failed to open file 3!" << std::endl;
-    }
+        ErrorExit("Failed to open file: "s + argv[3]);
     codeGen.PrintDefinitions(out);
 }
 
