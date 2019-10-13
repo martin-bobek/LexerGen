@@ -242,56 +242,46 @@ public:
 
 int main(int argc, char *argv[])
 {
-    //std::chrono::time_point<std::chrono::high_resolution_clock> t0;
-    try
+    if (argc != 4)
     {
-        if (argc != 4)
-        {
-            std::cerr << "Incorrect number of parameters!" << std::endl;
-            return 0;
-        }
-        vector<NFA> nfas;
-        for (size_t i = 1;; i++)
-        {
-            std::string expression;
-            std::cout << "Regular Expression: ";
-            std::cin >> expression;
-            if (expression == "$")
-                break;
-            CodeGen::AddType(move(expression));
-            std::cout << "    -> ";
-            std::cin >> expression;
-            Tree syntaxTree(expression);
-            nfas.push_back(syntaxTree.GenNfa(i));
-        }
-        CodeGen codeGen(DFA::Optimize(NFA::Merge(move(nfas))));
-        codeGen.PrintStates(std::cout);
-        std::ofstream out(argv[1]);
-        if (out.fail())
-        {
-            std::cerr << "Failed to open file 1!" << std::endl;
-            return 1;
-        }
-        codeGen.PrintClass(out);
-        out = std::ofstream(argv[2]);
-        if (out.fail())
-        {
-            std::cerr << "Failed to open file 2!" << std::endl;
-        }
-        codeGen.PrintTerminals(out);
-        out = std::ofstream(argv[3]);
-        if (out.fail())
-        {
-            std::cerr << "Failed to open file 3!" << std::endl;
-        }
-        codeGen.PrintDefinitions(out);
+        std::cerr << "Incorrect number of parameters!" << std::endl;
+        return 0;
     }
-    catch (char *msg)
+    vector<NFA> nfas;
+    for (size_t i = 1;; i++)
     {
-        std::cout << msg << std::endl;
+        std::string expression;
+        std::cout << "Regular Expression: ";
+        std::cin >> expression;
+        if (expression == "$")
+            break;
+        CodeGen::AddType(move(expression));
+        std::cout << "    -> ";
+        std::cin >> expression;
+        Tree syntaxTree(expression);
+        nfas.push_back(syntaxTree.GenNfa(i));
     }
-    //std::chrono::time_point<std::chrono::high_resolution_clock> t = std::chrono::high_resolution_clock::now();
-    //std::cout << "\nExecution time: " << std::chrono::duration_cast<std::chrono::microseconds>(t - t0).count() << std::endl;
+    CodeGen codeGen(DFA::Optimize(NFA::Merge(move(nfas))));
+    codeGen.PrintStates(std::cout);
+    std::ofstream out(argv[1]);
+    if (out.fail())
+    {
+        std::cerr << "Failed to open file 1!" << std::endl;
+        return 1;
+    }
+    codeGen.PrintClass(out);
+    out = std::ofstream(argv[2]);
+    if (out.fail())
+    {
+        std::cerr << "Failed to open file 2!" << std::endl;
+    }
+    codeGen.PrintTerminals(out);
+    out = std::ofstream(argv[3]);
+    if (out.fail())
+    {
+        std::cerr << "Failed to open file 3!" << std::endl;
+    }
+    codeGen.PrintDefinitions(out);
 }
 
 NFA::NFA(char c) : exitCIndex(charIndex(c))
