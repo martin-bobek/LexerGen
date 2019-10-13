@@ -240,6 +240,8 @@ public:
     NFA GenNfa(NFA &&nfa = NFA()) const;
 };
 
+void ErrorExit(const std::string &message);
+
 int main(int argc, char *argv[])
 {
     if (argc != 4)
@@ -282,6 +284,11 @@ int main(int argc, char *argv[])
         std::cerr << "Failed to open file 3!" << std::endl;
     }
     codeGen.PrintDefinitions(out);
+}
+
+void ErrorExit(const std::string &message) {
+    std::cerr << message << std::endl;
+    exit(1);
 }
 
 NFA::NFA(char c) : exitCIndex(charIndex(c))
