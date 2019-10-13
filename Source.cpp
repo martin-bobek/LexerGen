@@ -246,7 +246,7 @@ void ErrorExit(const std::string &message);
 
 int main(int argc, char *argv[])
 {
-    if (argc != 4)
+    if (argc != 5)
         ErrorExit("Incorrect number of parameters!");
 
     vector<NFA> nfas;
@@ -283,6 +283,11 @@ int main(int argc, char *argv[])
     if (out.fail())
         ErrorExit("Failed to open file: "s + argv[3]);
     codeGen.PrintDefinitions(out);
+
+    out = std::ofstream(argv[4]);
+    if (out.fail())
+        ErrorExit("Failed to open file: "s + argv[4]);
+    codeGen.PrintSymHeader(out);
 }
 
 void ErrorExit(const std::string &message) {
