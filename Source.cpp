@@ -687,10 +687,8 @@ void CodeGen::PrintTerminals(std::ostream &out) const
         "    friend std::ostream &operator<<(std::ostream &os, const Terminal &term) { return term.print(os); }\n"
         "private:\n"
         "    virtual std::ostream &print(std::ostream &os) const = 0;\n"
-        "};\n\n"
-
-        "inline Terminal::~Terminal() = default;\n"
-        "using pTerminal = std::unique_ptr<Terminal>;\n\n\n";
+        "};\n"
+        "inline Terminal::~Terminal() = default;\n\n";
 
     for (const auto &type : types) {
         out <<
@@ -703,6 +701,10 @@ void CodeGen::PrintTerminals(std::ostream &out) const
             "    const std::string value;\n"
             "};\n";
     }
+
+    out << "\nusing pTerminal = std::unique_ptr<Terminal>;\n";
+    for (const auto &type : types)
+        out << "using p" << type << " = std::unique_ptr<" << type << ">;\n";
 
     out << "\n#endif\n";
 }
