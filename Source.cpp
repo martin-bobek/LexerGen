@@ -115,6 +115,7 @@ public:
     void PrintClass(std::ostream &out) const;
     void PrintTerminals(std::ostream &out) const;
     void PrintDefinitions(std::ostream &out) const;
+    void PrintSymHeader(std::ostream &out) const;
 private:
     class State;
     struct Transition
@@ -727,6 +728,33 @@ void CodeGen::PrintDefinitions(std::ostream &out) const
     for (size_t i = 1; i < states.size(); i++)
         if (!states[i]->Empty())
             states[i]->PrintDefinition(out);
+}
+void CodeGen::PrintSymHeader(std::ostream &out) const {
+    out <<
+        "#ifndef SYMBOL_H__\n"
+        "#define SYMBOL_H__\n\n"
+
+        "#include <memory>\n"
+        "#include <stack>\n"
+        "#include <string>\n"
+        "#include <vector>\n\n"
+
+        "struct SyntaxError {\n"
+        "    std::string Location;\n"
+        "    std::string Message;\n"
+        "};\n\n"
+
+        "class Symbol {\n"
+        "public:\n"
+        "    virtual ~Symbol() = 0;\n"
+        "};\n"
+        "inline Symbol::~Symbol() = default;\n\n"
+
+        "using pSymbol = std::unique_ptr<Symbol>;\n"
+        "using Stack = std::stack<size_t, std::vector<size_t>>;\n"
+        "using SymStack = std::stack<pSymbol, std::vector<pSymbol>>;\n\n"
+
+        "#endif\n";
 }
 void CodeGen::State::AddTransitions(std::vector<Transition> &&transList)
 {
