@@ -269,23 +269,20 @@ int main(int argc, char *argv[])
     CodeGen codeGen(DFA::Optimize(NFA::Merge(move(nfas))));
     codeGen.PrintStates(std::cout);
 
-    std::ofstream out(argv[1]);
-    if (out.fail())
+    std::ofstream out;
+    if (!(out = std::ofstream(argv[1])))
         ErrorExit("Failed to open file: "s + argv[1]);
     codeGen.PrintClass(out);
 
-    out = std::ofstream(argv[2]);
-    if (out.fail())
+    if (!(out = std::ofstream(argv[2])))
         ErrorExit("Failed to open file: "s + argv[2]);
     codeGen.PrintTerminals(out);
 
-    out = std::ofstream(argv[3]);
-    if (out.fail())
+    if (!(out = std::ofstream(argv[3])))
         ErrorExit("Failed to open file: "s + argv[3]);
     codeGen.PrintDefinitions(out);
 
-    out = std::ofstream(argv[4]);
-    if (out.fail())
+    if (!(out = std::ofstream(argv[4])))
         ErrorExit("Failed to open file: "s + argv[4]);
     codeGen.PrintSymHeader(out);
 }
