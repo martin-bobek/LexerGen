@@ -246,41 +246,46 @@ void ErrorExit(const std::string &message);
 
 int main(int argc, char *argv[])
 {
-    if (argc != 5)
+    if (argc != 6)
         ErrorExit("Incorrect number of parameters!");
+
+    std::ifstream in;
+    if (!(in = std::ifstream(argv[1])))
+        ErrorExit("Failed to open file: "s + argv[1]);
 
     vector<NFA> nfas;
     for (size_t i = 1;; i++) {
         std::string expression;
-        std::cin >> expression;
+        in >> expression;
 
         if (expression == "$")
             break;
         CodeGen::AddType(move(expression));
 
-        std::cin >> expression;
+        in >> expression;
         Tree syntaxTree(expression);
         nfas.push_back(syntaxTree.GenNfa(i));
     }
+    in.close();
 
     CodeGen codeGen(DFA::Optimize(NFA::Merge(move(nfas))));
     codeGen.PrintStates(std::cout);
 
     std::ofstream out;
-    if (!(out = std::ofstream(argv[1])))
-        ErrorExit("Failed to open file: "s + argv[1]);
-    codeGen.PrintClass(out);
-
     if (!(out = std::ofstream(argv[2])))
         ErrorExit("Failed to open file: "s + argv[2]);
-    codeGen.PrintTerminals(out);
+    codeGen.PrintClass(out);
 
     if (!(out = std::ofstream(argv[3])))
         ErrorExit("Failed to open file: "s + argv[3]);
-    codeGen.PrintDefinitions(out);
+    codeGen.PrintTerminals(out);
 
     if (!(out = std::ofstream(argv[4])))
         ErrorExit("Failed to open file: "s + argv[4]);
+    codeGen.PrintDefinitions(out);
+
+    if (!(out = std::ofstream(argv[5])))
+        ErrorExit("Failed to open file: "s + argv[5]);
     codeGen.PrintSymHeader(out);
 }
 
