@@ -245,6 +245,7 @@ public:
 };
 
 void ErrorExit(const std::string &message);
+Tree ReadTerminal(std::istream &in);
 
 int main(int argc, char *argv[])
 {
@@ -256,18 +257,9 @@ int main(int argc, char *argv[])
         ErrorExit("Failed to open file: "s + argv[1]);
 
     vector<NFA> nfas;
-    for (size_t i = 1;; i++) {
-        std::string expression;
-        in >> expression;
-
-        if (expression == "$")
-            break;
-        CodeGen::AddType(move(expression));
-
-        in >> expression;
-        Tree syntaxTree(expression);
-        nfas.push_back(syntaxTree.GenNfa(i));
-    }
+    Tree tree;
+    for (size_t i = 1; tree = ReadTerminal(in); i++)
+        nfas.push_back(tree.GenNfa(i));
     in.close();
 
     CodeGen codeGen(DFA::Optimize(NFA::Merge(move(nfas))));
@@ -291,6 +283,18 @@ int main(int argc, char *argv[])
     codeGen.PrintDefinitions(out);
 }
 
+Tree ReadTerminal(std::istream &in) {
+    std::string expression;
+    in >> expression;
+
+    if (expression == "$")
+        return {};
+
+    CodeGen::AddType(move(expression));
+
+    in >> expression;
+    return Tree(expression);
+}
 void ErrorExit(const std::string &message) {
     std::cerr << message << std::endl;
     exit(1);
