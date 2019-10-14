@@ -252,16 +252,13 @@ int main(int argc, char *argv[])
     vector<NFA> nfas;
     for (size_t i = 1;; i++) {
         std::string expression;
-        std::cout << "Regular Expression: ";
         std::cin >> expression;
 
         if (expression == "$")
             break;
         CodeGen::AddType(move(expression));
 
-        std::cout << "    -> ";
         std::cin >> expression;
-
         Tree syntaxTree(expression);
         nfas.push_back(syntaxTree.GenNfa(i));
     }
