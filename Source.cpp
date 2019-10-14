@@ -181,8 +181,10 @@ public:
 class Tree
 {
 public:
-    Tree(const std::string &input);
+    Tree() = default;
+    explicit Tree(const std::string &input);
     NFA GenNfa(size_t acceptingType) const { return NFA::Complete(node->GenNfa(), acceptingType); }
+    operator bool() const { return (bool)node; }
 private:
     pNode node;
 };
