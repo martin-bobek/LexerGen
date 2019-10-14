@@ -274,7 +274,7 @@ int main(int argc, char *argv[])
     std::ofstream out;
     if (!(out = std::ofstream(argv[2])))
         ErrorExit("Failed to open file: "s + argv[2]);
-    codeGen.PrintClass(out);
+    codeGen.PrintSymHeader(out);
 
     if (!(out = std::ofstream(argv[3])))
         ErrorExit("Failed to open file: "s + argv[3]);
@@ -282,11 +282,11 @@ int main(int argc, char *argv[])
 
     if (!(out = std::ofstream(argv[4])))
         ErrorExit("Failed to open file: "s + argv[4]);
-    codeGen.PrintDefinitions(out);
+    codeGen.PrintClass(out);
 
     if (!(out = std::ofstream(argv[5])))
         ErrorExit("Failed to open file: "s + argv[5]);
-    codeGen.PrintSymHeader(out);
+    codeGen.PrintDefinitions(out);
 }
 
 void ErrorExit(const std::string &message) {
