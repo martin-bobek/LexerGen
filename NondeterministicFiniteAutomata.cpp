@@ -13,11 +13,22 @@ NFA::NFA(char c) : exitCIndex(charIndex(c))
     states.emplace_back(new NfaState);
     exitState = states.back().get();
 }
-NFA NFA::Complete(NFA arg, size_t acceptingType)
+
+size_t NFA::Accepting(const std::vector<bool> &subset) const
 {
-    arg.states.emplace_back(new NfaState(acceptingType));
-    arg.exitState->Attach(arg.exitCIndex, arg.states.back().get());
-    return std::move(arg);
+    size_t result = states.size() + 1;
+    for (size_t i = 0; i < states.size(); i++)
+    {
+        if (subset[i])
+        {
+            size_t acceptingType = states[i]->AcceptingType();
+            if (acceptingType && acceptingType < result)
+                result = acceptingType;
+        }
+    }
+    if (result == states.size() + 1)
+        return 0;
+    return result;
 }
 std::vector<bool> &NFA::Closure(std::vector<bool> &subset) const
 {
@@ -39,16 +50,12 @@ std::vector<bool> NFA::Move(const std::vector<bool> &subset, size_t cIndex) cons
     }
     return Closure(result);
 }
-void NFA::closureRecursion(size_t current, size_t checked, std::vector<bool> &subset) const
+
+NFA NFA::Complete(NFA arg, size_t acceptingType)
 {
-    if (current > checked)
-        subset[current] = true;
-    else if (!subset[current] || checked == current) // note that this fails if there is an epsilon loop
-    {
-        subset[current] = true;
-        for (auto tran : states[current]->TransList(EPSILON))
-            closureRecursion(tran, checked, subset);
-    }
+    arg.states.emplace_back(new NfaState(acceptingType));
+    arg.exitState->Attach(arg.exitCIndex, arg.states.back().get());
+    return std::move(arg);
 }
 NFA NFA::Concatenate(NFA lhs, NFA rhs)
 {
@@ -65,6 +72,20 @@ NFA NFA::Concatenate(NFA lhs, NFA rhs)
         result.states.push_back(std::move(state));
     result.exitCIndex = rhs.exitCIndex;
     result.exitState = rhs.exitState;
+    return result;
+}
+NFA NFA::Merge(std::vector<NFA> nfas)
+{
+    NFA result;
+    pNfaState in(new NfaState);
+    for (auto &nfa : nfas)
+        in->Attach(EPSILON, nfa.states[0].get());
+    result.states.push_back(std::move(in));
+    for (auto &nfa : nfas)
+        for (auto &state : nfa.states)
+            result.states.emplace_back(std::move(state));
+    for (size_t i = 0; i < result.states.size(); i++)
+        result.states[i]->AssignNum(i);
     return result;
 }
 NFA NFA::Or(NFA lhs, NFA rhs)
@@ -90,22 +111,6 @@ NFA NFA::Or(NFA lhs, NFA rhs)
     result.states.push_back(std::move(out));
     return result;
 }
-NFA NFA::Star(NFA arg)
-{
-    if (!arg.exitState)
-        return NFA();
-    NFA result;
-    result.states.reserve(arg.states.size() + 2);
-    pNfaState hub(new NfaState);
-    hub->Attach(EPSILON, arg.states[0].get());
-    arg.exitState->Attach(arg.exitCIndex, hub.get());
-    result.exitCIndex = EPSILON;
-    result.exitState = hub.get();
-    result.states.push_back(std::move(hub));
-    for (auto &state : arg.states)
-        result.states.push_back(std::move(state));
-    return result;
-}
 NFA NFA::Plus(NFA arg)
 {
     if (!arg.exitState)
@@ -124,61 +129,35 @@ NFA NFA::Plus(NFA arg)
     result.states.push_back(std::move(out));
     return result;
 }
-NFA NFA::Merge(std::vector<NFA> nfas)
+NFA NFA::Star(NFA arg)
 {
+    if (!arg.exitState)
+        return NFA();
     NFA result;
-    pNfaState in(new NfaState);
-    for (auto &nfa : nfas)
-        in->Attach(EPSILON, nfa.states[0].get());
-    result.states.push_back(std::move(in));
-    for (auto &nfa : nfas)
-        for (auto &state : nfa.states)
-            result.states.emplace_back(std::move(state));
-    for (size_t i = 0; i < result.states.size(); i++)
-        result.states[i]->AssignNum(i);
+    result.states.reserve(arg.states.size() + 2);
+    pNfaState hub(new NfaState);
+    hub->Attach(EPSILON, arg.states[0].get());
+    arg.exitState->Attach(arg.exitCIndex, hub.get());
+    result.exitCIndex = EPSILON;
+    result.exitState = hub.get();
+    result.states.push_back(std::move(hub));
+    for (auto &state : arg.states)
+        result.states.push_back(std::move(state));
     return result;
 }
-size_t NFA::Size() const
+
+void NFA::closureRecursion(size_t current, size_t checked, std::vector<bool> &subset) const
 {
-    return states.size();
-}
-size_t NFA::Accepting(const std::vector<bool> &subset) const
-{
-    size_t result = states.size() + 1;
-    for (size_t i = 0; i < states.size(); i++)
+    if (current > checked)
+        subset[current] = true;
+    else if (!subset[current] || checked == current) // note that this fails if there is an epsilon loop
     {
-        if (subset[i])
-        {
-            size_t acceptingType = states[i]->AcceptingType();
-            if (acceptingType && acceptingType < result)
-                result = acceptingType;
-        }
+        subset[current] = true;
+        for (auto tran : states[current]->TransList(EPSILON))
+            closureRecursion(tran, checked, subset);
     }
-    if (result == states.size() + 1)
-        return 0;
-    return result;
 }
-void NfaState::Attach(size_t cIndex, NfaState *to)				// all references need to be adjusted to give cIndex instead of c
-{
-    transitions.emplace_back(to, cIndex);
-}
-void NfaState::AssignNum(size_t num)
-{
-    stateNum = num;
-}
-std::vector<size_t> NfaState::TransList(size_t cIndex) const		// all references need to be adjusted to give cIndex instead of c
-{
-    std::vector<size_t> result;
-    result.reserve(transitions.size());
-    for (auto trans : transitions)
-        if (trans.cIndex == cIndex)
-            result.push_back(trans.state->stateNum);
-    return result;
-}
-size_t NfaState::AcceptingType() const
-{
-    return accepting;
-}
+
 size_t NFA::charIndex(char c)
 {
     std::vector<char>::const_iterator it = std::find(alphabet.begin(), alphabet.end(), c);
@@ -186,4 +165,15 @@ size_t NFA::charIndex(char c)
     if (it == alphabet.end())
         alphabet.push_back(c);
     return index;
+}
+
+
+std::vector<size_t> NfaState::TransList(size_t cIndex) const
+{
+    std::vector<size_t> result;
+    result.reserve(transitions.size());
+    for (auto trans : transitions)
+        if (trans.cIndex == cIndex)
+            result.push_back(trans.state->stateNum);
+    return result;
 }

@@ -25,7 +25,7 @@ public:
     size_t Accepting(const std::vector<bool> &subset) const;
     std::vector<bool> &Closure(std::vector<bool> &subset) const;
     std::vector<bool> Move(const std::vector<bool> &subset, size_t cIndex) const;
-    size_t Size() const;
+    size_t Size() const { return states.size(); }
 
     static NFA Complete(NFA arg, size_t acceptingType);
     static NFA Concatenate(NFA lhs, NFA rhs);
@@ -61,10 +61,10 @@ namespace nfa {
     public:
         NfaState(size_t accepting_ = 0) : accepting(accepting_) {}
 
-        void Attach(size_t cIndex, NfaState *to);
-        void AssignNum(size_t num);
+        void Attach(size_t cIndex, NfaState *to) { transitions.emplace_back(to, cIndex); }
+        void AssignNum(size_t num) { stateNum = num; }
         std::vector<size_t> TransList(size_t cIndex) const;
-        size_t AcceptingType() const;
+        size_t AcceptingType() const { return accepting; }
 
     private:
         size_t accepting;
