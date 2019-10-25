@@ -15,7 +15,7 @@ public:
     static constexpr size_t EPSILON = 0;
 
     NFA() = default;
-    NFA(char c);
+    NFA(char exitChar);
 
     NFA(NFA &&) = default;
     NFA(const NFA &) = delete;

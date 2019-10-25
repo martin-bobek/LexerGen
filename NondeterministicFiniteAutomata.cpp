@@ -8,10 +8,9 @@ using namespace nfa;
 
 std::vector<char> NFA::alphabet(1, '\0');
 
-NFA::NFA(char c) : exitCIndex(charIndex(c))
-{
-    states.emplace_back(new NfaState);
-    exitState = states.back().get();
+NFA::NFA(char exitChar) : exitCIndex(charIndex(exitChar)) {
+    pNfaState &state = states.emplace_back(std::make_unique<NfaState>());
+    exitState = state.get();
 }
 
 size_t NFA::Accepting(const std::vector<bool> &subset) const
