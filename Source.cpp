@@ -249,8 +249,8 @@ class Parser {
 public:
     Parser(std::istream &in) : in(&in) {}
     bool ParseInput();
-    std::vector<NFA> GetNFAs();
-    std::string GetError();
+    std::vector<NFA> GetNFAs() { return std::move(nfas); }
+    std::string GetError() { return std::move(error); }
 
     Parser(Parser &&) = default;
     Parser(const Parser &) = delete;
@@ -342,6 +342,25 @@ Tree ReadTerminal(std::istream &in) {
 void ErrorExit(const std::string &message) {
     std::cerr << message << std::endl;
     exit(1);
+}
+
+bool Parser::ParseInput() {
+    try {
+        Tree tree;
+        for (size_t i = 1; tree = ReadTerminal(*in); i++)
+            nfas.push_back(tree.GenNfa(i));
+    }
+    catch (const char *err) {
+        error = err;
+        return false;
+    }
+
+    if (nfas.empty()) {
+        error = "Input file is empty!";
+        return false;
+    }
+
+    return true;
 }
 
 NFA::NFA(char c) : exitCIndex(charIndex(c))
