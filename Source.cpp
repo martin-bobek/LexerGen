@@ -275,17 +275,12 @@ int main(int argc, char *argv[])
     if (!(in = std::ifstream(argv[1])))
         ErrorExit("Failed to open file: "s + argv[1]);
 
-    vector<NFA> nfas;
-    try {
-        Tree tree;
-        for (size_t i = 1; tree = ReadTerminal(in); i++)
-            nfas.push_back(tree.GenNfa(i));
-    }
-    catch (const char *err) {
-        ErrorExit(err);
-    }
+    Parser parser(in);
+    if (!parser.ParseInput())
+        ErrorExit(parser.GetError());
     in.close();
 
+    std::vector<NFA> nfas = parser.GetNFAs();
     CodeGen codeGen(DFA::Optimize(NFA::Merge(move(nfas))));
     codeGen.PrintStates(std::cout);
 
