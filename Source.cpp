@@ -258,6 +258,7 @@ public:
     Parser &operator=(const Parser &) = delete;
 private:
     Tree readLine();
+    std::string parseLine(const std::string &str);
 
     std::istream *in;
     std::vector<NFA> nfas;
@@ -265,7 +266,6 @@ private:
 };
 
 void ErrorExit(const std::string &message);
-std::string ParseLine(const std::string &str);
 
 int main(int argc, char *argv[])
 {
@@ -303,30 +303,6 @@ int main(int argc, char *argv[])
     codeGen.PrintDefinitions(out);
 }
 
-std::string ParseLine(const std::string &str) {
-    std::stringstream stream(str);
-
-    if (stream.get() != ':')
-        ErrorExit("Lines must begin with :");
-
-    std::string word;
-    if (!(stream >> word))
-        ErrorExit("Expected Terminal name after : in " + str);
-    CodeGen::AddType(move(word));
-
-    if (!(stream >> word) || word != ">")
-        ErrorExit("Expected > after Terminal in " + str);
-
-    std::string regEx;
-    if (!(stream >> regEx))
-        ErrorExit("Expected regular expression after Terminal name in " + str);
-
-    if (stream >> word)
-        ErrorExit("Unexpected text after regular expression in " + str);
-
-    return regEx;
-}
-
 void ErrorExit(const std::string &message) {
     std::cerr << message << std::endl;
     exit(1);
@@ -356,8 +332,31 @@ Tree Parser::readLine() {
     if (!std::getline(*in, line))
         return {};
 
-    line = ParseLine(line);
+    line = parseLine(line);
     return Tree(line);
+}
+std::string Parser::parseLine(const std::string &str) {
+    std::stringstream stream(str);
+
+    if (stream.get() != ':')
+        ErrorExit("Lines must begin with :");
+
+    std::string word;
+    if (!(stream >> word))
+        ErrorExit("Expected Terminal name after : in " + str);
+    CodeGen::AddType(move(word));
+
+    if (!(stream >> word) || word != ">")
+        ErrorExit("Expected > after Terminal in " + str);
+
+    std::string regEx;
+    if (!(stream >> regEx))
+        ErrorExit("Expected regular expression after Terminal name in " + str);
+
+    if (stream >> word)
+        ErrorExit("Unexpected text after regular expression in " + str);
+
+    return regEx;
 }
 
 NFA::NFA(char c) : exitCIndex(charIndex(c))
