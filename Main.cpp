@@ -42,7 +42,7 @@ private:
     struct StateInfo
     {
         size_t accepting = 0;
-        vector<size_t> transitions = vector<size_t>(NFA::AlphabetSize(), EPSILON);
+        vector<size_t> transitions = vector<size_t>(NFA::AlphabetSize(), NFA::EPSILON);
     };
     vector<StateInfo> stateInfo;
 };
