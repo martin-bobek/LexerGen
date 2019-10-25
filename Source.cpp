@@ -245,6 +245,23 @@ public:
     NFA GenNfa(NFA &&nfa = NFA()) const;
 };
 
+class Parser {
+public:
+    Parser(std::istream &in) : in(&in) {}
+    bool ParseInput();
+    std::vector<NFA> GetNFAs();
+    std::string GetError();
+
+    Parser(Parser &&) = default;
+    Parser(const Parser &) = delete;
+    Parser &operator=(Parser &&) = default;
+    Parser &operator=(const Parser &) = delete;
+private:
+    std::istream *in;
+    std::vector<NFA> nfas;
+    std::string error;
+};
+
 void ErrorExit(const std::string &message);
 Tree ReadTerminal(std::istream &in);
 std::string ParseLine(const std::string &str);
