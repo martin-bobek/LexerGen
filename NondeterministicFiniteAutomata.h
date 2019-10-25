@@ -46,7 +46,7 @@ private:
 class NFA::State
 {
 public:
-    State(size_t accepting = 0) : accepting(accepting) {}
+    State(size_t accepting_ = 0) : accepting(accepting_) {}
     void attach(size_t cIndex, State *to);
     void assignNum(size_t num);
     vector<size_t> transList(size_t cIndex) const;

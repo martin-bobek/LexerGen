@@ -67,7 +67,7 @@ private:
     class State;
     struct Transition
     {
-        Transition(const State *to, size_t charIndex) : to(to), charIndex(charIndex) {}
+        Transition(const State *to_, size_t charIndex_) : to(to_), charIndex(charIndex_) {}
         const State *to;
         size_t charIndex;
     };
@@ -81,7 +81,7 @@ vector<std::string> CodeGen::types = vector<std::string>();
 class CodeGen::State
 {
 public:
-    State(size_t state, size_t accepting) : oldState(state), accepting(accepting) {}
+    State(size_t state_, size_t accepting_) : oldState(state_), accepting(accepting_) {}
     void AddTransitions(std::vector<Transition> &&trans);
     void InitStateNum(size_t num) { newState = num; }
 
@@ -92,7 +92,7 @@ public:
 private:
     struct TransGroup
     {
-        TransGroup(const State *to, std::vector<size_t> &&charIndices) : to(to), charIndices(move(charIndices)) {}
+        TransGroup(const State *to_, std::vector<size_t> &&charIndices_) : to(to_), charIndices(move(charIndices_)) {}
         const State *to;
         std::vector<size_t> charIndices;
     };
@@ -105,7 +105,7 @@ private:
 class Iterator
 {
 public:
-    Iterator(const std::string::const_iterator &it) : it(it) {}
+    Iterator(const std::string::const_iterator &it_) : it(it_) {}
     Iterator(const Iterator &it) = default;
     ~Iterator() = default;
     Iterator &operator=(const Iterator &rhs) = default;
@@ -138,7 +138,7 @@ private:
 class Terminal : public Node
 {
 public:
-    Terminal(char symbol) : symbol(symbol) {}
+    Terminal(char symbol_) : symbol(symbol_) {}
     NFA GenNfa(NFA &&nfa = NFA()) const { return NFA(symbol); }
 private:
     const char symbol;
@@ -193,7 +193,7 @@ public:
 
 class Parser {
 public:
-    Parser(std::istream &in) : in(&in) {}
+    Parser(std::istream &in_) : in(&in_) {}
     bool ParseInput();
     std::vector<NFA> GetNFAs() { return std::move(nfas); }
     std::string GetError() { return std::move(error); }
