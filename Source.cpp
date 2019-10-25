@@ -257,9 +257,14 @@ int main(int argc, char *argv[])
         ErrorExit("Failed to open file: "s + argv[1]);
 
     vector<NFA> nfas;
-    Tree tree;
-    for (size_t i = 1; tree = ReadTerminal(in); i++)
-        nfas.push_back(tree.GenNfa(i));
+    try {
+        Tree tree;
+        for (size_t i = 1; tree = ReadTerminal(in); i++)
+            nfas.push_back(tree.GenNfa(i));
+    }
+    catch (const char *err) {
+        ErrorExit(err);
+    }
     in.close();
 
     CodeGen codeGen(DFA::Optimize(NFA::Merge(move(nfas))));
