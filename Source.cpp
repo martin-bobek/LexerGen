@@ -2,6 +2,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <sstream>
 #include <vector>
 #include <memory>
 #include <chrono>
@@ -246,6 +247,7 @@ public:
 
 void ErrorExit(const std::string &message);
 Tree ReadTerminal(std::istream &in);
+std::string ParseLine(const std::string &str);
 
 int main(int argc, char *argv[])
 {
@@ -288,6 +290,26 @@ int main(int argc, char *argv[])
     codeGen.PrintDefinitions(out);
 }
 
+std::string ParseLine(const std::string &str) {
+    std::stringstream stream(str);
+
+    if (stream.get() != ':')
+        ErrorExit("Lines must begin with :");
+
+    std::string word;
+    if (!(stream >> word))
+        ErrorExit("Expected Terminal name after : in " + str);
+    CodeGen::AddType(move(word));
+
+    std::string regEx;
+    if (!(stream >> regEx))
+        ErrorExit("Expected regular expression after Terminal name in " + str);
+
+    if (stream >> word)
+        ErrorExit("Unexpected text after regular expression in " + str);
+
+    return regEx;
+}
 Tree ReadTerminal(std::istream &in) {
     std::string expression;
 
