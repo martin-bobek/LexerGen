@@ -13,40 +13,38 @@ NFA::NFA(char exitChar) : exitCIndex(charIndex(exitChar)) {
     exitState = state.get();
 }
 
-size_t NFA::Accepting(const std::vector<bool> &subset) const
-{
+size_t NFA::Accepting(const std::vector<bool> &subset) const {
     size_t result = states.size() + 1;
-    for (size_t i = 0; i < states.size(); i++)
-    {
-        if (subset[i])
-        {
+
+    for (size_t i = 0; i < states.size(); i++) {
+        if (subset[i]) {
             size_t acceptingType = states[i]->AcceptingType();
+
             if (acceptingType && acceptingType < result)
                 result = acceptingType;
         }
     }
+
     if (result == states.size() + 1)
         return 0;
+
     return result;
 }
-std::vector<bool> &NFA::Closure(std::vector<bool> &subset) const
-{
+std::vector<bool> &NFA::Closure(std::vector<bool> &subset) const {
     for (size_t i = 0; i < subset.size(); i++)
         if (subset[i])
             closureRecursion(i, i, subset);
+
     return subset;
 }
-std::vector<bool> NFA::Move(const std::vector<bool> &subset, size_t cIndex) const
-{
+std::vector<bool> NFA::Move(const std::vector<bool> &subset, size_t cIndex) const {
     std::vector<bool> result(states.size(), false);
+
     for (size_t i = 0; i < subset.size(); i++)
-    {
         if (subset[i])
-        {
             for (auto tran : states[i]->TransList(cIndex))
                 result[tran] = true;
-        }
-    }
+
     return Closure(result);
 }
 
@@ -145,13 +143,12 @@ NFA NFA::Star(NFA arg)
     return result;
 }
 
-void NFA::closureRecursion(size_t current, size_t checked, std::vector<bool> &subset) const
-{
+void NFA::closureRecursion(size_t current, size_t checked, std::vector<bool> &subset) const {
     if (current > checked)
         subset[current] = true;
-    else if (!subset[current] || checked == current) // note that this fails if there is an epsilon loop
-    {
+    else if (!subset[current] || checked == current) { // note that this fails if there is an epsilon loop
         subset[current] = true;
+
         for (auto tran : states[current]->TransList(EPSILON))
             closureRecursion(tran, checked, subset);
     }
