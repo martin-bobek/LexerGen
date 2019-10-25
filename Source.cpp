@@ -257,13 +257,14 @@ public:
     Parser &operator=(Parser &&) = default;
     Parser &operator=(const Parser &) = delete;
 private:
+    Tree readLine();
+
     std::istream *in;
     std::vector<NFA> nfas;
     std::string error;
 };
 
 void ErrorExit(const std::string &message);
-Tree ReadTerminal(std::istream &in);
 std::string ParseLine(const std::string &str);
 
 int main(int argc, char *argv[])
@@ -325,15 +326,7 @@ std::string ParseLine(const std::string &str) {
 
     return regEx;
 }
-Tree ReadTerminal(std::istream &in) {
-    std::string line;
 
-    if (!std::getline(in, line))
-        return {};
-
-    line = ParseLine(line);
-    return Tree(line);
-}
 void ErrorExit(const std::string &message) {
     std::cerr << message << std::endl;
     exit(1);
@@ -342,7 +335,7 @@ void ErrorExit(const std::string &message) {
 bool Parser::ParseInput() {
     try {
         Tree tree;
-        for (size_t i = 1; tree = ReadTerminal(*in); i++)
+        for (size_t i = 1; tree = readLine(); i++)
             nfas.push_back(tree.GenNfa(i));
     }
     catch (const char *err) {
@@ -356,6 +349,15 @@ bool Parser::ParseInput() {
     }
 
     return true;
+}
+Tree Parser::readLine() {
+    std::string line;
+
+    if (!std::getline(*in, line))
+        return {};
+
+    line = ParseLine(line);
+    return Tree(line);
 }
 
 NFA::NFA(char c) : exitCIndex(charIndex(c))
