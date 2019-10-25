@@ -301,6 +301,9 @@ std::string ParseLine(const std::string &str) {
         ErrorExit("Expected Terminal name after : in " + str);
     CodeGen::AddType(move(word));
 
+    if (!(stream >> word) || word != ">")
+        ErrorExit("Expected > after Terminal in " + str);
+
     std::string regEx;
     if (!(stream >> regEx))
         ErrorExit("Expected regular expression after Terminal name in " + str);
