@@ -15,8 +15,6 @@ using namespace std::literals::string_literals;
 using std::move;
 using std::vector;
 
-#define EPSILON		0
-
 class Node;
 typedef std::unique_ptr<Node> pNode;
 // produces ugly code for input (cba)*(a|b)

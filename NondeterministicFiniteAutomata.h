@@ -6,7 +6,7 @@
 
 using std::vector;
 
-#define EPSILON		0
+constexpr size_t EPSILON = 0;
 
 class NFA
 {
