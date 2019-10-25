@@ -290,14 +290,13 @@ int main(int argc, char *argv[])
 
 Tree ReadTerminal(std::istream &in) {
     std::string expression;
-    in >> expression;
 
-    if (expression == "$")
+    if (!(in >> expression))
         return {};
-
     CodeGen::AddType(move(expression));
 
-    in >> expression;
+    if (!(in >> expression))
+        ErrorExit("Unexpected end of file!");
     return Tree(expression);
 }
 void ErrorExit(const std::string &message) {
