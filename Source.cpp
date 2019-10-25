@@ -311,15 +311,13 @@ std::string ParseLine(const std::string &str) {
     return regEx;
 }
 Tree ReadTerminal(std::istream &in) {
-    std::string expression;
+    std::string line;
 
-    if (!std::getline(in, expression))
+    if (!std::getline(in, line))
         return {};
-    CodeGen::AddType(move(expression));
 
-    if (!std::getline(in, expression))
-        ErrorExit("Unexpected end of file!");
-    return Tree(expression);
+    line = ParseLine(line);
+    return Tree(line);
 }
 void ErrorExit(const std::string &message) {
     std::cerr << message << std::endl;
