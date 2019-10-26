@@ -181,12 +181,13 @@ size_t NFA::charIndex(char c) {
 }
 
 
-std::vector<size_t> NfaState::TransList(size_t cIndex) const
-{
+std::vector<size_t> NfaState::TransList(size_t cIndex) const {
     std::vector<size_t> result;
     result.reserve(transitions.size());
+
     for (auto trans : transitions)
         if (trans.cIndex == cIndex)
             result.push_back(trans.state->stateNum);
+
     return result;
 }
