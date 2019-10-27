@@ -154,12 +154,13 @@ void NFA::closureRecursion(size_t current, size_t checked, std::vector<bool> &su
     }
 }
 
-size_t NFA::charIndex(char c)
-{
-    std::vector<char>::const_iterator it = std::find(alphabet.begin(), alphabet.end(), c);
+size_t NFA::charIndex(char c) {
+    auto it = std::find(alphabet.begin(), alphabet.end(), c);
     size_t index = it - alphabet.begin();
+
     if (it == alphabet.end())
         alphabet.push_back(c);
+
     return index;
 }
 
