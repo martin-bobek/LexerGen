@@ -53,23 +53,20 @@ NFA NFA::Complete(NFA arg, size_t acceptingType) {
     arg.exitState->Attach(arg.exitCIndex, state.get());
     return arg;
 }
-NFA NFA::Concatenate(NFA lhs, NFA rhs)
-{
+NFA NFA::Concatenate(NFA lhs, NFA rhs) {
     if (!rhs)
         return lhs;
     if (!lhs)
         return rhs;
 
-    NFA result;
-    result.states.reserve(lhs.states.size() + rhs.states.size() + 1);
     lhs.exitState->Attach(lhs.exitCIndex, rhs.states[0].get());
-    for (auto &state : lhs.states)
-        result.states.push_back(std::move(state));
-    for (auto &state : rhs.states)
-        result.states.push_back(std::move(state));
-    result.exitCIndex = rhs.exitCIndex;
-    result.exitState = rhs.exitState;
-    return result;
+    lhs.exitState = rhs.exitState;
+    lhs.exitCIndex = rhs.exitCIndex;
+
+    lhs.states.reserve(lhs.states.size() + rhs.states.size() + 1);
+    std::move(rhs.states.begin(), rhs.states.end(), std::back_inserter(lhs.states));
+
+    return lhs;
 }
 NFA NFA::Merge(std::vector<NFA> nfas)
 {
