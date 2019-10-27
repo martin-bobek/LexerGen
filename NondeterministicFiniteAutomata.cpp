@@ -9,7 +9,7 @@ using namespace nfa;
 std::vector<char> NFA::alphabet(1, '\0');
 
 NFA::NFA(char exitChar) : exitCIndex(charIndex(exitChar)) {
-    pNfaState &state = states.emplace_back(std::make_unique<NfaState>());
+    auto &state = states.emplace_back(std::make_unique<NfaState>());
     exitState = state.get();
 }
 
@@ -49,7 +49,7 @@ std::vector<bool> NFA::Move(const std::vector<bool> &subset, size_t cIndex) cons
 }
 
 NFA NFA::Complete(NFA arg, size_t acceptingType) {
-    pNfaState &state = arg.states.emplace_back(std::make_unique<NfaState>(acceptingType));
+    auto &state = arg.states.emplace_back(std::make_unique<NfaState>(acceptingType));
     arg.exitState->Attach(arg.exitCIndex, state.get());
     return arg;
 }
@@ -69,7 +69,7 @@ NFA NFA::Concatenate(NFA lhs, NFA rhs) {
     return lhs;
 }
 NFA NFA::Merge(std::vector<NFA> nfas) {
-    pNfaState in = std::make_unique<NfaState>();
+    auto in = std::make_unique<NfaState>();
     size_t size = 1;
 
     for (auto &nfa : nfas) {
@@ -95,11 +95,11 @@ NFA NFA::Or(NFA lhs, NFA rhs) {
     if (!lhs)
         return rhs;
 
-    pNfaState in = std::make_unique<NfaState>();
+    auto in = std::make_unique<NfaState>();
     in->Attach(EPSILON, lhs.states[0].get());
     in->Attach(EPSILON, rhs.states[0].get());
 
-    pNfaState out = std::make_unique<NfaState>();
+    auto out = std::make_unique<NfaState>();
     lhs.exitState->Attach(lhs.exitCIndex, out.get());
     rhs.exitState->Attach(rhs.exitCIndex, out.get());
 
@@ -120,10 +120,10 @@ NFA NFA::Plus(NFA arg) {
     if (!arg)
         return {};
 
-    pNfaState in = std::make_unique<NfaState>();
+    auto in = std::make_unique<NfaState>();
     in->Attach(EPSILON, arg.states[0].get());
 
-    pNfaState out = std::make_unique<NfaState>();
+    auto out = std::make_unique<NfaState>();
     out->Attach(EPSILON, in.get());
     arg.exitState->Attach(arg.exitCIndex, out.get());
 
@@ -143,7 +143,7 @@ NFA NFA::Star(NFA arg) {
     if (!arg)
         return {};
 
-    pNfaState hub = std::make_unique<NfaState>();
+    auto hub = std::make_unique<NfaState>();
     hub->Attach(EPSILON, arg.states[0].get());
     arg.exitState->Attach(arg.exitCIndex, hub.get());
 

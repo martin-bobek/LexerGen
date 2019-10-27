@@ -6,7 +6,6 @@
 
 namespace nfa {
     class NfaState;
-    using pNfaState = std::unique_ptr<NfaState>;
 };
 
 
@@ -43,7 +42,7 @@ private:
 
     static size_t charIndex(char c);
 
-    std::vector<nfa::pNfaState> states;
+    std::vector<std::unique_ptr<nfa::NfaState>> states;
     nfa::NfaState *exitState;
     size_t exitCIndex;
 
