@@ -1,6 +1,7 @@
 #include "NondeterministicFiniteAutomata.h"
 
 #include <algorithm>
+#include <utility>
 
 std::vector<char> NFA::alphabet(1, '\0');
 
