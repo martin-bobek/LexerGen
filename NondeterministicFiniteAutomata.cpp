@@ -48,11 +48,10 @@ std::vector<bool> NFA::Move(const std::vector<bool> &subset, size_t cIndex) cons
     return Closure(result);
 }
 
-NFA NFA::Complete(NFA arg, size_t acceptingType)
-{
-    arg.states.emplace_back(new NfaState(acceptingType));
-    arg.exitState->Attach(arg.exitCIndex, arg.states.back().get());
-    return std::move(arg);
+NFA NFA::Complete(NFA arg, size_t acceptingType) {
+    pNfaState &state = arg.states.emplace_back(std::make_unique<NfaState>(acceptingType));
+    arg.exitState->Attach(arg.exitCIndex, state.get());
+    return arg;
 }
 NFA NFA::Concatenate(NFA lhs, NFA rhs)
 {
