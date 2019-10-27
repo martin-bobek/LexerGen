@@ -56,10 +56,11 @@ NFA NFA::Complete(NFA arg, size_t acceptingType)
 }
 NFA NFA::Concatenate(NFA lhs, NFA rhs)
 {
-    if (!rhs.exitState)
-        return std::move(lhs);
-    if (!lhs.exitState)
-        return std::move(rhs);
+    if (!rhs)
+        return lhs;
+    if (!lhs)
+        return rhs;
+
     NFA result;
     result.states.reserve(lhs.states.size() + rhs.states.size() + 1);
     lhs.exitState->Attach(lhs.exitCIndex, rhs.states[0].get());
@@ -87,10 +88,11 @@ NFA NFA::Merge(std::vector<NFA> nfas)
 }
 NFA NFA::Or(NFA lhs, NFA rhs)
 {
-    if (!rhs.exitState)
-        return std::move(lhs);
-    if (!lhs.exitState)
-        return std::move(rhs);
+    if (!rhs)
+        return lhs;
+    if (!lhs)
+        return rhs;
+
     NFA result;
     result.states.reserve(lhs.states.size() + rhs.states.size() + 3);
     pNfaState in(new NfaState), out(new NfaState);
@@ -110,8 +112,9 @@ NFA NFA::Or(NFA lhs, NFA rhs)
 }
 NFA NFA::Plus(NFA arg)
 {
-    if (!arg.exitState)
-        return NFA();
+    if (!arg)
+        return {};
+
     NFA result;
     result.states.reserve(arg.states.size() + 3);
     pNfaState in(new NfaState), out(new NfaState);
@@ -128,8 +131,9 @@ NFA NFA::Plus(NFA arg)
 }
 NFA NFA::Star(NFA arg)
 {
-    if (!arg.exitState)
-        return NFA();
+    if (!arg)
+        return {};
+
     NFA result;
     result.states.reserve(arg.states.size() + 2);
     pNfaState hub(new NfaState);

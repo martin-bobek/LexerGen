@@ -39,6 +39,7 @@ public:
 
 private:
     void closureRecursion(size_t current, size_t checked, std::vector<bool> &subset) const;
+    operator bool() const { return !states.empty(); }
 
     static size_t charIndex(char c);
 
