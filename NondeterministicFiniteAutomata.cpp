@@ -116,23 +116,27 @@ NFA NFA::Or(NFA lhs, NFA rhs) {
 
     return result;
 }
-NFA NFA::Plus(NFA arg)
-{
+NFA NFA::Plus(NFA arg) {
     if (!arg)
         return {};
 
+    pNfaState in = std::make_unique<NfaState>();
+    in->Attach(EPSILON, arg.states[0].get());
+
+    pNfaState out = std::make_unique<NfaState>();
+    out->Attach(EPSILON, in.get());
+    arg.exitState->Attach(arg.exitCIndex, out.get());
+
     NFA result;
     result.states.reserve(arg.states.size() + 3);
-    pNfaState in(new NfaState), out(new NfaState);
-    in->Attach(EPSILON, arg.states[0].get());
-    arg.exitState->Attach(arg.exitCIndex, out.get());
-    out->Attach(EPSILON, in.get());
     result.states.push_back(std::move(in));
-    for (auto &state : arg.states)
-        result.states.push_back(std::move(state));
-    result.exitCIndex = EPSILON;
+
+    std::move(arg.states.begin(), arg.states.end(), std::back_inserter(result.states));
+
     result.exitState = out.get();
     result.states.push_back(std::move(out));
+    result.exitCIndex = EPSILON;
+
     return result;
 }
 NFA NFA::Star(NFA arg)
