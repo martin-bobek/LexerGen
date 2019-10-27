@@ -139,21 +139,23 @@ NFA NFA::Plus(NFA arg) {
 
     return result;
 }
-NFA NFA::Star(NFA arg)
-{
+NFA NFA::Star(NFA arg) {
     if (!arg)
         return {};
 
-    NFA result;
-    result.states.reserve(arg.states.size() + 2);
-    pNfaState hub(new NfaState);
+    pNfaState hub = std::make_unique<NfaState>();
     hub->Attach(EPSILON, arg.states[0].get());
     arg.exitState->Attach(arg.exitCIndex, hub.get());
-    result.exitCIndex = EPSILON;
+
+    NFA result;
+    result.states.reserve(arg.states.size() + 2);
+
     result.exitState = hub.get();
     result.states.push_back(std::move(hub));
-    for (auto &state : arg.states)
-        result.states.push_back(std::move(state));
+    result.exitCIndex = EPSILON;
+
+    std::move(arg.states.begin(), arg.states.end(), std::back_inserter(result.states));
+
     return result;
 }
 
