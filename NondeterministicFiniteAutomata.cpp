@@ -68,18 +68,25 @@ NFA NFA::Concatenate(NFA lhs, NFA rhs) {
 
     return lhs;
 }
-NFA NFA::Merge(std::vector<NFA> nfas)
-{
-    NFA result;
-    pNfaState in(new NfaState);
-    for (auto &nfa : nfas)
+NFA NFA::Merge(std::vector<NFA> nfas) {
+    pNfaState in = std::make_unique<NfaState>();
+    size_t size = 1;
+
+    for (auto &nfa : nfas) {
         in->Attach(EPSILON, nfa.states[0].get());
+        size += nfa.states.size();
+    }
+
+    NFA result;
+    result.states.reserve(size);
     result.states.push_back(std::move(in));
+
     for (auto &nfa : nfas)
-        for (auto &state : nfa.states)
-            result.states.emplace_back(std::move(state));
+        std::move(nfa.states.begin(), nfa.states.end(), std::back_inserter(result.states));
+
     for (size_t i = 0; i < result.states.size(); i++)
         result.states[i]->AssignNum(i);
+
     return result;
 }
 NFA NFA::Or(NFA lhs, NFA rhs)
