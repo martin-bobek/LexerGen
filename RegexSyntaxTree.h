@@ -6,15 +6,17 @@
 #include <memory>
 #include <string>
 
-class Node;
-typedef std::unique_ptr<Node> pNode;
 
+namespace synTree {
+    class Node
+    {
+    public:
+        virtual NFA GenNfa(NFA &&nfa = NFA()) const = 0;
+    };
 
-class Node
-{
-public:
-    virtual NFA GenNfa(NFA &&nfa = NFA()) const = 0;
-};
+    typedef std::unique_ptr<Node> pNode;
+}
+
 class Tree
 {
 public:
@@ -23,7 +25,7 @@ public:
     NFA GenNfa(size_t acceptingType) const { return NFA::Complete(node->GenNfa(), acceptingType); }
     operator bool() const { return (bool)node; }
 private:
-    pNode node;
+    synTree::pNode node;
 };
 
 #endif
