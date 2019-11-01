@@ -133,7 +133,7 @@ Tree::Tree(const std::string &input)
         throw "Tree::Tree 1: Syntax Error!";
     else if (*it == '(' || it.IsChar())
     {
-        node = pNode(new Q(it, end));
+        node = std::make_unique<Q>(it, end);
         if (it != end)
             throw "Tree::Tree 2: Syntax Error!";
     }
@@ -146,8 +146,8 @@ Q::Q(Iterator &it, Iterator end)
         throw "Q::Q 1: Syntax Error!";
     else if (*it == '(' || it.IsChar())
     {
-        nodes.emplace_back(new S(it, end));
-        nodes.emplace_back(new R(it, end));
+        nodes.push_back(std::make_unique<S>(it, end));
+        nodes.push_back(std::make_unique<R>(it, end));
     }
     else
         throw "Q::Q 2: Syntax Error!";
@@ -161,10 +161,10 @@ R::R(Iterator &it, Iterator end)
     if (it == end || *it == ')');
     else if (*it == '|')
     {
-        nodes.emplace_back(new Terminal('|'));
+        nodes.push_back(std::make_unique<Terminal>('|'));
         it++;
-        nodes.emplace_back(new S(it, end));
-        nodes.emplace_back(new R(it, end));
+        nodes.push_back(std::make_unique<S>(it, end));
+        nodes.push_back(std::make_unique<R>(it, end));
     }
     else
         throw "R::R 1: Syntax Error!";
@@ -181,8 +181,8 @@ S::S(Iterator &it, Iterator end)
         throw "S::S 1: Syntax Error!";
     else if (*it == '(' || it.IsChar())
     {
-        nodes.emplace_back(new U(it, end));
-        nodes.emplace_back(new T(it, end));
+        nodes.push_back(std::make_unique<U>(it, end));
+        nodes.push_back(std::make_unique<T>(it, end));
     }
     else
         throw "S::S 2: Syntax Error!";
@@ -196,8 +196,8 @@ T::T(Iterator &it, Iterator end)
     if (it == end || *it == '|' || *it == ')');
     else if (*it == '(' || it.IsChar())
     {
-        nodes.emplace_back(new U(it, end));
-        nodes.emplace_back(new T(it, end));
+        nodes.push_back(std::make_unique<U>(it, end));
+        nodes.push_back(std::make_unique<T>(it, end));
     }
     else
         throw "T::T 1: Syntax Error!";
@@ -214,8 +214,8 @@ U::U(Iterator &it, Iterator end)
         throw "U::U 1: Syntax Error!";
     else if (*it == '(' || it.IsChar())
     {
-        nodes.emplace_back(new W(it, end));
-        nodes.emplace_back(new V(it, end));
+        nodes.push_back(std::make_unique<W>(it, end));
+        nodes.push_back(std::make_unique<V>(it, end));
     }
     else
         throw "U::U 2: Syntax Error!";
@@ -229,9 +229,9 @@ V::V(Iterator &it, Iterator end)
     if (it == end || *it == '|' || *it == '(' || *it == ')' || it.IsChar());
     else if (*it == '*')
     {
-        nodes.emplace_back(new Terminal('*'));
+        nodes.push_back(std::make_unique<Terminal>('*'));
         it++;
-        nodes.emplace_back(new V(it, end));
+        nodes.push_back(std::make_unique<V>(it, end));
     }
     else
         throw "V::V 1: Syntax Error!";
@@ -248,16 +248,16 @@ W::W(Iterator &it, Iterator end)
         throw "W::W 1: Syntax Error!";
     else if (it.IsChar())
     {
-        nodes.emplace_back(new Terminal(it.C()));
+        nodes.push_back(std::make_unique<Terminal>(it.C()));
         it++;
     }
     else if (*it == '(')
     {
-        nodes.emplace_back(new Terminal('('));
+        nodes.push_back(std::make_unique<Terminal>('('));
         it++;
-        nodes.emplace_back(new Q(it, end));
+        nodes.push_back(std::make_unique<Q>(it, end));
         if (it != end && *it == ')')
-            nodes.emplace_back(new Terminal(')'));
+            nodes.push_back(std::make_unique<Terminal>(')'));
         else
             throw "W::W 2: Syntax Error!";
         it++;
