@@ -28,7 +28,7 @@ namespace synTree {
     {
     public:
         Terminal(char symbol_) : symbol(symbol_) {}
-        NFA GenNfa(NFA &&nfa = NFA()) const { return NFA(symbol); }
+        NFA GenNfa(NFA) const { return symbol; }
     private:
         char symbol;
     };
@@ -42,43 +42,43 @@ namespace synTree {
     {
     public:
         Q(Iterator &it, Iterator end);
-        NFA GenNfa(NFA &&nfa = NFA()) const;
+        NFA GenNfa(NFA nfa) const;
     };
     class R : public NonTerminal
     {
     public:
         R(Iterator &it, Iterator end);
-        NFA GenNfa(NFA &&nfa = NFA()) const;
+        NFA GenNfa(NFA nfa) const;
     };
     class S : public NonTerminal
     {
     public:
         S(Iterator &it, Iterator end);
-        NFA GenNfa(NFA &&nfa = NFA()) const;
+        NFA GenNfa(NFA nfa) const;
     };
     class T : public NonTerminal
     {
     public:
         T(Iterator &it, Iterator end);
-        NFA GenNfa(NFA &&nfa = NFA()) const;
+        NFA GenNfa(NFA nfa) const;
     };
     class U : public NonTerminal
     {
     public:
         U(Iterator &it, Iterator end);
-        NFA GenNfa(NFA &&nfa = NFA()) const;
+        NFA GenNfa(NFA nfa) const;
     };
     class V : public NonTerminal
     {
     public:
         V(Iterator &it, Iterator end);
-        NFA GenNfa(NFA &&nfa = NFA()) const;
+        NFA GenNfa(NFA nfa) const;
     };
     class W : public NonTerminal
     {
     public:
         W(Iterator &it, Iterator end);
-        NFA GenNfa(NFA &&nfa = NFA()) const;
+        NFA GenNfa(NFA nfa) const;
     };
 }
 
@@ -147,7 +147,7 @@ Q::Q(Iterator &it, Iterator end)
     else
         throw "Q::Q 2: Syntax Error!";
 }
-NFA Q::GenNfa(NFA &&nfa) const
+NFA Q::GenNfa(NFA) const
 {
     return nodes[1]->GenNfa(nodes[0]->GenNfa());
 }
@@ -164,7 +164,7 @@ R::R(Iterator &it, Iterator end)
     else
         throw "R::R 1: Syntax Error!";
 }
-NFA R::GenNfa(NFA &&nfa) const
+NFA R::GenNfa(NFA nfa) const
 {
     if (nodes.empty())
         return std::move(nfa);
@@ -182,7 +182,7 @@ S::S(Iterator &it, Iterator end)
     else
         throw "S::S 2: Syntax Error!";
 }
-NFA S::GenNfa(NFA &&nfa) const
+NFA S::GenNfa(NFA) const
 {
     return nodes[1]->GenNfa(nodes[0]->GenNfa());
 }
@@ -197,7 +197,7 @@ T::T(Iterator &it, Iterator end)
     else
         throw "T::T 1: Syntax Error!";
 }
-NFA T::GenNfa(NFA &&nfa) const
+NFA T::GenNfa(NFA nfa) const
 {
     if (nodes.empty())
         return std::move(nfa);
@@ -215,7 +215,7 @@ U::U(Iterator &it, Iterator end)
     else
         throw "U::U 2: Syntax Error!";
 }
-NFA U::GenNfa(NFA &&nfa) const
+NFA U::GenNfa(NFA) const
 {
     return nodes[1]->GenNfa(nodes[0]->GenNfa());
 }
@@ -231,7 +231,7 @@ V::V(Iterator &it, Iterator end)
     else
         throw "V::V 1: Syntax Error!";
 }
-NFA V::GenNfa(NFA &&nfa) const
+NFA V::GenNfa(NFA nfa) const
 {
     if (nodes.empty())
         return std::move(nfa);
@@ -260,7 +260,7 @@ W::W(Iterator &it, Iterator end)
     else
         throw "W::W 3: Syntax Error!";
 }
-NFA W::GenNfa(NFA &&nfa) const
+NFA W::GenNfa(NFA) const
 {
     if (nodes.size() == 1)
         return nodes[0]->GenNfa();

@@ -8,10 +8,9 @@
 
 
 namespace synTree {
-    class Node
-    {
+    class Node {
     public:
-        virtual NFA GenNfa(NFA &&nfa = NFA()) const = 0;
+        virtual NFA GenNfa(NFA nfa = {}) const = 0;
         virtual ~Node() = default;
     };
 }
