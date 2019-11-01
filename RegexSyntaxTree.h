@@ -14,8 +14,6 @@ namespace synTree {
         virtual NFA GenNfa(NFA &&nfa = NFA()) const = 0;
         virtual ~Node() = default;
     };
-
-    typedef std::unique_ptr<Node> pNode;
 }
 
 class Tree
@@ -26,7 +24,7 @@ public:
     NFA GenNfa(size_t acceptingType) const { return NFA::Complete(node->GenNfa(), acceptingType); }
     operator bool() const { return (bool)node; }
 private:
-    synTree::pNode node;
+    std::unique_ptr<synTree::Node> node;
 };
 
 #endif

@@ -36,7 +36,7 @@ namespace synTree {
     class NonTerminal : public Node
     {
     protected:
-        std::vector<pNode> nodes;
+        std::vector<std::unique_ptr<Node>> nodes;
     };
 
     class Q : public NonTerminal
