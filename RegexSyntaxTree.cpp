@@ -83,30 +83,6 @@ namespace synTree {
 }
 
 
-Iterator &Iterator::operator++()
-{
-    if (*it == '\\')
-        it++;
-    it++;
-    return *this;
-}
-Iterator Iterator::operator++(int)
-{
-    Iterator temp = *this;
-    ++*this;
-    return temp;
-}
-char Iterator::operator*() const
-{
-    char c = *it;
-    if (c == '(' || c == ')' || c == '*' || c == '|')
-        return c;
-    return '\0';
-}
-bool Iterator::IsChar() const
-{
-    return **this == '\0';
-}
 char Iterator::C() const
 {
     if (*it == '\\')
@@ -123,6 +99,30 @@ char Iterator::C() const
         return *(it + 1);
     }
     return *it;
+}
+bool Iterator::IsChar() const
+{
+    return **this == '\0';
+}
+char Iterator::operator*() const
+{
+    char c = *it;
+    if (c == '(' || c == ')' || c == '*' || c == '|')
+        return c;
+    return '\0';
+}
+Iterator &Iterator::operator++()
+{
+    if (*it == '\\')
+        it++;
+    it++;
+    return *this;
+}
+Iterator Iterator::operator++(int)
+{
+    Iterator temp = *this;
+    ++*this;
+    return temp;
 }
 
 Tree::Tree(const std::string &input)
