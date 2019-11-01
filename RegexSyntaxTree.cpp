@@ -7,20 +7,19 @@ using namespace synTree;
 
 
 namespace synTree {
-    class Iterator
-    {
+    class Iterator {
     public:
         Iterator(const std::string::const_iterator &it_) : it(it_) {}
-        Iterator(const Iterator &it) = default;
-        ~Iterator() = default;
-        Iterator &operator=(const Iterator &rhs) = default;
+
+        char C() const;
+        bool IsChar() const;
+
         Iterator &operator++();
         Iterator operator++(int);
+        char operator*() const;
         bool operator==(const Iterator &rhs) const { return it == rhs.it; }
         bool operator!=(const Iterator &rhs) const { return it != rhs.it; }
-        char operator*() const;
-        bool IsChar() const;
-        char C() const;
+
     private:
         std::string::const_iterator it;
     };
