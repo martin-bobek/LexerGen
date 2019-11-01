@@ -31,7 +31,7 @@ namespace synTree {
         Terminal(char symbol_) : symbol(symbol_) {}
         NFA GenNfa(NFA &&nfa = NFA()) const { return NFA(symbol); }
     private:
-        const char symbol;
+        char symbol;
     };
     class NonTerminal : public Node
     {
