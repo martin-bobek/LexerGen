@@ -12,6 +12,7 @@ namespace synTree {
     {
     public:
         virtual NFA GenNfa(NFA &&nfa = NFA()) const = 0;
+        virtual ~Node() = default;
     };
 
     typedef std::unique_ptr<Node> pNode;
