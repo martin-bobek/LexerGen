@@ -83,6 +83,21 @@ namespace synTree {
 }
 
 
+Tree::Tree(const std::string &input)
+{
+    Iterator it = input.begin(), end = input.end();
+    if (it == end)
+        throw "Tree::Tree 1: Syntax Error!";
+    else if (*it == '(' || it.IsChar())
+    {
+        node = std::make_unique<Q>(it, end);
+        if (it != end)
+            throw "Tree::Tree 2: Syntax Error!";
+    }
+    else
+        throw "Tree::Tree 3: Syntax Error!";
+}
+
 char Iterator::Char() const {
     if (*it == '\\') {
         char c = *(it + 1);
@@ -121,20 +136,6 @@ Iterator Iterator::operator++(int) {
     return temp;
 }
 
-Tree::Tree(const std::string &input)
-{
-    Iterator it = input.begin(), end = input.end();
-    if (it == end)
-        throw "Tree::Tree 1: Syntax Error!";
-    else if (*it == '(' || it.IsChar())
-    {
-        node = std::make_unique<Q>(it, end);
-        if (it != end)
-            throw "Tree::Tree 2: Syntax Error!";
-    }
-    else
-        throw "Tree::Tree 3: Syntax Error!";
-}
 Q::Q(Iterator &it, Iterator end)
 {
     if (it == end)
@@ -146,10 +147,6 @@ Q::Q(Iterator &it, Iterator end)
     }
     else
         throw "Q::Q 2: Syntax Error!";
-}
-NFA Q::GenNfa(NFA) const
-{
-    return nodes[1]->GenNfa(nodes[0]->GenNfa());
 }
 R::R(Iterator &it, Iterator end)
 {
@@ -164,12 +161,6 @@ R::R(Iterator &it, Iterator end)
     else
         throw "R::R 1: Syntax Error!";
 }
-NFA R::GenNfa(NFA nfa) const
-{
-    if (nodes.empty())
-        return std::move(nfa);
-    return NFA::Or(std::move(nfa), nodes[2]->GenNfa(nodes[1]->GenNfa()));
-}
 S::S(Iterator &it, Iterator end)
 {
     if (it == end)
@@ -182,10 +173,6 @@ S::S(Iterator &it, Iterator end)
     else
         throw "S::S 2: Syntax Error!";
 }
-NFA S::GenNfa(NFA) const
-{
-    return nodes[1]->GenNfa(nodes[0]->GenNfa());
-}
 T::T(Iterator &it, Iterator end)
 {
     if (it == end || *it == '|' || *it == ')');
@@ -196,12 +183,6 @@ T::T(Iterator &it, Iterator end)
     }
     else
         throw "T::T 1: Syntax Error!";
-}
-NFA T::GenNfa(NFA nfa) const
-{
-    if (nodes.empty())
-        return std::move(nfa);
-    return nodes[1]->GenNfa(NFA::Concatenate(std::move(nfa), nodes[0]->GenNfa()));
 }
 U::U(Iterator &it, Iterator end)
 {
@@ -215,10 +196,6 @@ U::U(Iterator &it, Iterator end)
     else
         throw "U::U 2: Syntax Error!";
 }
-NFA U::GenNfa(NFA) const
-{
-    return nodes[1]->GenNfa(nodes[0]->GenNfa());
-}
 V::V(Iterator &it, Iterator end)
 {
     if (it == end || *it == '|' || *it == '(' || *it == ')' || it.IsChar());
@@ -230,12 +207,6 @@ V::V(Iterator &it, Iterator end)
     }
     else
         throw "V::V 1: Syntax Error!";
-}
-NFA V::GenNfa(NFA nfa) const
-{
-    if (nodes.empty())
-        return std::move(nfa);
-    return NFA::Star(nodes[1]->GenNfa(std::move(nfa)));
 }
 W::W(Iterator &it, Iterator end)
 {
@@ -259,6 +230,37 @@ W::W(Iterator &it, Iterator end)
     }
     else
         throw "W::W 3: Syntax Error!";
+}
+
+NFA Q::GenNfa(NFA) const
+{
+    return nodes[1]->GenNfa(nodes[0]->GenNfa());
+}
+NFA R::GenNfa(NFA nfa) const
+{
+    if (nodes.empty())
+        return std::move(nfa);
+    return NFA::Or(std::move(nfa), nodes[2]->GenNfa(nodes[1]->GenNfa()));
+}
+NFA S::GenNfa(NFA) const
+{
+    return nodes[1]->GenNfa(nodes[0]->GenNfa());
+}
+NFA T::GenNfa(NFA nfa) const
+{
+    if (nodes.empty())
+        return std::move(nfa);
+    return nodes[1]->GenNfa(NFA::Concatenate(std::move(nfa), nodes[0]->GenNfa()));
+}
+NFA U::GenNfa(NFA) const
+{
+    return nodes[1]->GenNfa(nodes[0]->GenNfa());
+}
+NFA V::GenNfa(NFA nfa) const
+{
+    if (nodes.empty())
+        return std::move(nfa);
+    return NFA::Star(nodes[1]->GenNfa(std::move(nfa)));
 }
 NFA W::GenNfa(NFA) const
 {
