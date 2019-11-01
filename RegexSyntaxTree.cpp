@@ -9,10 +9,10 @@ using namespace synTree;
 namespace synTree {
     class Iterator {
     public:
-        Iterator(const std::string::const_iterator &it_) : it(it_) {}
+        Iterator(std::string::const_iterator it_) : it(std::move(it_)) {}
 
-        char C() const;
-        bool IsChar() const;
+        char Char() const;
+        bool IsChar() const { return **this == '\0'; }
 
         Iterator &operator++();
         Iterator operator++(int);
@@ -83,11 +83,10 @@ namespace synTree {
 }
 
 
-char Iterator::C() const
-{
-    if (*it == '\\')
-    {
+char Iterator::Char() const {
+    if (*it == '\\') {
         char c = *(it + 1);
+
         if (c == '$')
             return '\0';
         if (c == 'n')
@@ -96,30 +95,27 @@ char Iterator::C() const
             return ' ';
         if (c == 't')
             return '\t';
-        return *(it + 1);
+
+        return c;
     }
+
     return *it;
 }
-bool Iterator::IsChar() const
-{
-    return **this == '\0';
-}
-char Iterator::operator*() const
-{
+char Iterator::operator*() const {
     char c = *it;
     if (c == '(' || c == ')' || c == '*' || c == '|')
         return c;
+
     return '\0';
 }
-Iterator &Iterator::operator++()
-{
+Iterator &Iterator::operator++() {
     if (*it == '\\')
         it++;
+
     it++;
     return *this;
 }
-Iterator Iterator::operator++(int)
-{
+Iterator Iterator::operator++(int) {
     Iterator temp = *this;
     ++*this;
     return temp;
@@ -247,7 +243,7 @@ W::W(Iterator &it, Iterator end)
         throw "W::W 1: Syntax Error!";
     else if (it.IsChar())
     {
-        nodes.push_back(std::make_unique<Terminal>(it.C()));
+        nodes.push_back(std::make_unique<Terminal>(it.Char()));
         it++;
     }
     else if (*it == '(')
