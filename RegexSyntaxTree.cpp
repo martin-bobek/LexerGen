@@ -4,7 +4,6 @@
 #include <vector>
 
 using namespace synTree;
-using std::vector;
 
 
 namespace synTree {
@@ -37,7 +36,7 @@ namespace synTree {
     class NonTerminal : public Node
     {
     protected:
-        vector<pNode> nodes;
+        std::vector<pNode> nodes;
     };
 
     class Q : public NonTerminal
