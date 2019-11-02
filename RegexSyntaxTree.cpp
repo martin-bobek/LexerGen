@@ -24,58 +24,49 @@ namespace synTree {
         std::string::const_iterator it;
     };
 
-    class Terminal : public Node
-    {
+    class Terminal : public Node {
     public:
         Terminal(char symbol_) : symbol(symbol_) {}
         NFA GenNfa(NFA) const { return symbol; }
     private:
         char symbol;
     };
-    class NonTerminal : public Node
-    {
+    class NonTerminal : public Node {
     protected:
         std::vector<std::unique_ptr<Node>> nodes;
     };
 
-    class Q : public NonTerminal
-    {
+    class Q : public NonTerminal {
     public:
         Q(Iterator &it, Iterator end);
         NFA GenNfa(NFA nfa) const;
     };
-    class R : public NonTerminal
-    {
+    class R : public NonTerminal {
     public:
         R(Iterator &it, Iterator end);
         NFA GenNfa(NFA nfa) const;
     };
-    class S : public NonTerminal
-    {
+    class S : public NonTerminal {
     public:
         S(Iterator &it, Iterator end);
         NFA GenNfa(NFA nfa) const;
     };
-    class T : public NonTerminal
-    {
+    class T : public NonTerminal {
     public:
         T(Iterator &it, Iterator end);
         NFA GenNfa(NFA nfa) const;
     };
-    class U : public NonTerminal
-    {
+    class U : public NonTerminal {
     public:
         U(Iterator &it, Iterator end);
         NFA GenNfa(NFA nfa) const;
     };
-    class V : public NonTerminal
-    {
+    class V : public NonTerminal {
     public:
         V(Iterator &it, Iterator end);
         NFA GenNfa(NFA nfa) const;
     };
-    class W : public NonTerminal
-    {
+    class W : public NonTerminal {
     public:
         W(Iterator &it, Iterator end);
         NFA GenNfa(NFA nfa) const;
