@@ -74,14 +74,14 @@ namespace synTree {
 }
 
 
-Tree::Tree(const std::string &input)
-{
+Tree::Tree(const std::string &input) {
     Iterator it = input.begin(), end = input.end();
+
     if (it == end)
         throw "Tree::Tree 1: Syntax Error!";
-    else if (*it == '(' || it.IsChar())
-    {
+    else if (*it == '(' || it.IsChar()) {
         node = std::make_unique<Q>(it, end);
+
         if (it != end)
             throw "Tree::Tree 2: Syntax Error!";
     }
