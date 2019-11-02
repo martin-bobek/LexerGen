@@ -210,38 +210,31 @@ W::W(Iterator &it, Iterator end) {
         throw "W::W 3: Syntax Error!";
 }
 
-NFA Q::GenNfa(NFA) const
-{
+NFA Q::GenNfa(NFA) const {
     return nodes[1]->GenNfa(nodes[0]->GenNfa());
 }
-NFA R::GenNfa(NFA nfa) const
-{
+NFA R::GenNfa(NFA nfa) const {
     if (nodes.empty())
-        return std::move(nfa);
+        return nfa;
     return NFA::Or(std::move(nfa), nodes[2]->GenNfa(nodes[1]->GenNfa()));
 }
-NFA S::GenNfa(NFA) const
-{
+NFA S::GenNfa(NFA) const {
     return nodes[1]->GenNfa(nodes[0]->GenNfa());
 }
-NFA T::GenNfa(NFA nfa) const
-{
+NFA T::GenNfa(NFA nfa) const {
     if (nodes.empty())
-        return std::move(nfa);
+        return nfa;
     return nodes[1]->GenNfa(NFA::Concatenate(std::move(nfa), nodes[0]->GenNfa()));
 }
-NFA U::GenNfa(NFA) const
-{
+NFA U::GenNfa(NFA) const {
     return nodes[1]->GenNfa(nodes[0]->GenNfa());
 }
-NFA V::GenNfa(NFA nfa) const
-{
+NFA V::GenNfa(NFA nfa) const {
     if (nodes.empty())
-        return std::move(nfa);
+        return nfa;
     return NFA::Star(nodes[1]->GenNfa(std::move(nfa)));
 }
-NFA W::GenNfa(NFA) const
-{
+NFA W::GenNfa(NFA) const {
     if (nodes.size() == 1)
         return nodes[0]->GenNfa();
     return nodes[1]->GenNfa();
