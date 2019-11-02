@@ -239,3 +239,10 @@ NFA W::GenNfa(NFA) const {
         return nodes[0]->GenNfa();
     return nodes[1]->GenNfa();
 }
+
+std::string RegexParserError::createMessage(const std::string &msg, ErrorLoc loc) {
+    return "Error: \"" + msg +
+        "\" in " + loc.Function +
+        " at line " + std::to_string(loc.Line) +
+        " of " + loc.File;
+}
