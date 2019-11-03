@@ -9,7 +9,7 @@ using namespace synTree;
 namespace synTree {
     class Iterator {
     public:
-        Iterator(std::string::const_iterator it_) : it(std::move(it_)) {}
+        Iterator(std::string::const_iterator it_) noexcept : it(std::move(it_)) {}
 
         char Char() const;
         bool IsChar() const { return **this == '\0'; }
@@ -26,7 +26,7 @@ namespace synTree {
 
     class Terminal : public Node {
     public:
-        Terminal(char symbol_) : symbol(symbol_) {}
+        Terminal(char symbol_) noexcept : symbol(symbol_) {}
         NFA GenNfa(NFA) const { return symbol; }
     private:
         char symbol;
