@@ -170,8 +170,8 @@ bool Parser::ParseInput() {
         for (size_t i = 1; tree = readLine(); i++)
             nfas.push_back(tree.GenNfa(i));
     }
-    catch (const char *err) {
-        error = err;
+    catch (const RegexParserError &err) {
+        error = err.what();
         return false;
     }
 

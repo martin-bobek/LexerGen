@@ -78,15 +78,15 @@ Tree::Tree(const std::string &input) {
     Iterator it = input.begin(), end = input.end();
 
     if (it == end)
-        throw "Tree::Tree 1: Syntax Error!";
+        throw RegexParserError("Invalid syntax", ERROR_LOC());
     else if (*it == '(' || it.IsChar()) {
         node = std::make_unique<Q>(it, end);
 
         if (it != end)
-            throw "Tree::Tree 2: Syntax Error!";
+            throw RegexParserError("Invalid syntax", ERROR_LOC());
     }
     else
-        throw "Tree::Tree 3: Syntax Error!";
+        throw RegexParserError("Invalid syntax", ERROR_LOC());
 }
 
 char Iterator::Char() const {
@@ -129,13 +129,13 @@ Iterator Iterator::operator++(int) {
 
 Q::Q(Iterator &it, Iterator end) {
     if (it == end)
-        throw "Q::Q 1: Syntax Error!";
+        throw RegexParserError("Invalid syntax", ERROR_LOC());
     else if (*it == '(' || it.IsChar()) {
         nodes.push_back(std::make_unique<S>(it, end));
         nodes.push_back(std::make_unique<R>(it, end));
     }
     else
-        throw "Q::Q 2: Syntax Error!";
+        throw RegexParserError("Invalid syntax", ERROR_LOC());
 }
 R::R(Iterator &it, Iterator end) {
     if (it == end || *it == ')');
@@ -146,17 +146,17 @@ R::R(Iterator &it, Iterator end) {
         nodes.push_back(std::make_unique<R>(it, end));
     }
     else
-        throw "R::R 1: Syntax Error!";
+        throw RegexParserError("Invalid syntax", ERROR_LOC());
 }
 S::S(Iterator &it, Iterator end) {
     if (it == end)
-        throw "S::S 1: Syntax Error!";
+        throw RegexParserError("Invalid syntax", ERROR_LOC());
     else if (*it == '(' || it.IsChar()) {
         nodes.push_back(std::make_unique<U>(it, end));
         nodes.push_back(std::make_unique<T>(it, end));
     }
     else
-        throw "S::S 2: Syntax Error!";
+        throw RegexParserError("Invalid syntax", ERROR_LOC());
 }
 T::T(Iterator &it, Iterator end) {
     if (it == end || *it == '|' || *it == ')');
@@ -165,17 +165,17 @@ T::T(Iterator &it, Iterator end) {
         nodes.push_back(std::make_unique<T>(it, end));
     }
     else
-        throw "T::T 1: Syntax Error!";
+        throw RegexParserError("Invalid syntax", ERROR_LOC());
 }
 U::U(Iterator &it, Iterator end) {
     if (it == end)
-        throw "U::U 1: Syntax Error!";
+        throw RegexParserError("Invalid syntax", ERROR_LOC());
     else if (*it == '(' || it.IsChar()) {
         nodes.push_back(std::make_unique<W>(it, end));
         nodes.push_back(std::make_unique<V>(it, end));
     }
     else
-        throw "U::U 2: Syntax Error!";
+        throw RegexParserError("Invalid syntax", ERROR_LOC());
 }
 V::V(Iterator &it, Iterator end) {
     if (it == end || *it == '|' || *it == '(' || *it == ')' || it.IsChar());
@@ -185,11 +185,11 @@ V::V(Iterator &it, Iterator end) {
         nodes.push_back(std::make_unique<V>(it, end));
     }
     else
-        throw "V::V 1: Syntax Error!";
+        throw RegexParserError("Invalid syntax", ERROR_LOC());
 }
 W::W(Iterator &it, Iterator end) {
     if (it == end)
-        throw "W::W 1: Syntax Error!";
+        throw RegexParserError("Invalid syntax", ERROR_LOC());
     else if (it.IsChar()) {
         nodes.push_back(std::make_unique<Terminal>(it.Char()));
         it++;
@@ -202,12 +202,12 @@ W::W(Iterator &it, Iterator end) {
         if (it != end && *it == ')')
             nodes.push_back(std::make_unique<Terminal>(')'));
         else
-            throw "W::W 2: Syntax Error!";
+            throw RegexParserError("Invalid syntax", ERROR_LOC());
 
         it++;
     }
     else
-        throw "W::W 3: Syntax Error!";
+        throw RegexParserError("Invalid syntax", ERROR_LOC());
 }
 
 NFA Q::GenNfa(NFA) const {
