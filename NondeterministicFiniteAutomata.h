@@ -24,7 +24,7 @@ public:
     size_t Accepting(const std::vector<bool> &subset) const;
     std::vector<bool> &Closure(std::vector<bool> &subset) const;
     std::vector<bool> Move(const std::vector<bool> &subset, size_t cIndex) const;
-    size_t Size() const { return states.size(); }
+    size_t Size() const noexcept { return states.size(); }
 
     static NFA Complete(NFA arg, size_t acceptingType);
     static NFA Concatenate(NFA lhs, NFA rhs);
@@ -34,11 +34,11 @@ public:
     static NFA Star(NFA arg);
 
     static char Alphabet(size_t index) { return alphabet[index]; }
-    static size_t AlphabetSize() { return alphabet.size(); }
+    static size_t AlphabetSize() noexcept { return alphabet.size(); }
 
 private:
     void closureRecursion(size_t current, size_t checked, std::vector<bool> &subset) const;
-    operator bool() const { return !states.empty(); }
+    operator bool() const noexcept { return !states.empty(); }
 
     static size_t charIndex(char c);
 
@@ -51,7 +51,7 @@ private:
 
 namespace nfa {
     struct Transition {
-        Transition(NfaState *state_, size_t cIndex_) : state(state_), cIndex(cIndex_) {}
+        Transition(NfaState *state_, size_t cIndex_) noexcept : state(state_), cIndex(cIndex_) {}
 
         NfaState *state;
         size_t cIndex;
@@ -59,12 +59,12 @@ namespace nfa {
 
     class NfaState {
     public:
-        NfaState(size_t accepting_ = 0) : accepting(accepting_) {}
+        NfaState(size_t accepting_ = 0) noexcept : accepting(accepting_) {}
 
         void Attach(size_t cIndex, NfaState *to) { transitions.emplace_back(to, cIndex); }
-        void AssignNum(size_t num) { stateNum = num; }
+        void AssignNum(size_t num) noexcept { stateNum = num; }
         std::vector<size_t> TransList(size_t cIndex) const;
-        size_t AcceptingType() const { return accepting; }
+        size_t AcceptingType() const noexcept { return accepting; }
 
     private:
         size_t accepting;
