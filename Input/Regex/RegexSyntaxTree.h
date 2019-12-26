@@ -4,7 +4,7 @@
 #include "ErrorLoc.h"
 #include "NondeterministicFiniteAutomata.h"
 
-#include <exception>
+#include <stdexcept>
 #include <memory>
 #include <string>
 
